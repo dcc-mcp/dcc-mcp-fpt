@@ -4,7 +4,7 @@ Bridges AI assistants (Claude, Cursor, Copilot) to ShotGrid data through
 typed MCP tools built on dcc-mcp-core.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from dcc_mcp_fpt.server import ShotGridMcpServer, start_server
 
