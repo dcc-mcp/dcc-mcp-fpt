@@ -1,0 +1,129 @@
+tools:
+  - name: create_note
+    description: "Create a note linked to one or more ShotGrid entities."
+    source_file: scripts/create_note.py
+    input_schema:
+      type: object
+      required: ["subject", "content"]
+      properties:
+        subject:
+          type: string
+          description: "Note subject line."
+        content:
+          type: string
+          description: "Note body content (HTML supported)."
+        link_entity_type:
+          type: string
+          description: "Entity type to link the note to (e.g., 'Shot', 'Task')."
+        link_entity_ids:
+          type: array
+          items:
+            type: integer
+          description: "Entity IDs to link the note to."
+        project_id:
+          type: integer
+          description: "Project ID for the note."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["find_notes"]
+      on-failure: []
+
+  - name: find_notes
+    description: "Find notes linked to a specific entity."
+    source_file: scripts/find_notes.py
+    input_schema:
+      type: object
+      required: ["link_entity_type", "link_entity_id"]
+      properties:
+        link_entity_type:
+          type: string
+          description: "Entity type to find notes for."
+        link_entity_id:
+          type: integer
+          description: "Entity ID to find notes for."
+        limit:
+          type: integer
+          default: 50
+          description: "Maximum notes to return."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["update_note"]
+      on-failure: []
+
+  - name: update_note
+    description: "Update a note's subject or content."
+    source_file: scripts/update_note.py
+    input_schema:
+      type: object
+      required: ["note_id"]
+      properties:
+        note_id:
+          type: integer
+          description: "Note ID to update."
+        subject:
+          type: string
+          description: "New subject line."
+        content:
+          type: string
+          description: "New body content."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: []
+      on-failure: []

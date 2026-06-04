@@ -1,0 +1,212 @@
+tools:
+  - name: find_entities
+    description: "Search ShotGrid entities with filters, field selection, ordering, and pagination."
+    source_file: scripts/find_entities.py
+    input_schema:
+      type: object
+      required: ["entity_type"]
+      properties:
+        entity_type:
+          type: string
+          description: "Entity type to query (e.g., 'Shot', 'Asset', 'Task')."
+        filters:
+          type: array
+          description: "ShotGrid filter expressions."
+          default: []
+        fields:
+          type: array
+          items:
+            type: string
+          description: "Fields to retrieve. All fields if not specified."
+        order:
+          type: array
+          items:
+            type: object
+          description: "Sort order, e.g. [{'field_name': 'code', 'direction': 'asc'}]."
+        limit:
+          type: integer
+          description: "Maximum results (default: 500, max: 5000)."
+          default: 500
+        page:
+          type: integer
+          description: "Page number for pagination."
+          default: 1
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 60
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["find_one_entity", "update_entity"]
+      on-failure: []
+
+  - name: find_one_entity
+    description: "Find a single ShotGrid entity by filters. Returns None if not found."
+    source_file: scripts/find_one_entity.py
+    input_schema:
+      type: object
+      required: ["entity_type", "filters"]
+      properties:
+        entity_type:
+          type: string
+          description: "Entity type to query."
+        filters:
+          type: array
+          description: "ShotGrid filter expressions."
+        fields:
+          type: array
+          items:
+            type: string
+          description: "Fields to retrieve."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["update_entity", "delete_entity"]
+      on-failure: []
+
+  - name: create_entity
+    description: "Create a new ShotGrid entity with field values. Returns the created entity."
+    source_file: scripts/create_entity.py
+    input_schema:
+      type: object
+      required: ["entity_type", "data"]
+      properties:
+        entity_type:
+          type: string
+          description: "Entity type to create (e.g., 'Shot', 'Task')."
+        data:
+          type: object
+          description: "Field values for the new entity, e.g. {'code': 'SH001', 'project': {'type': 'Project', 'id': 123}}."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["find_one_entity", "update_entity"]
+      on-failure: []
+
+  - name: update_entity
+    description: "Update fields on an existing ShotGrid entity by ID."
+    source_file: scripts/update_entity.py
+    input_schema:
+      type: object
+      required: ["entity_type", "entity_id", "data"]
+      properties:
+        entity_type:
+          type: string
+          description: "Entity type to update."
+        entity_id:
+          type: integer
+          description: "ID of the entity to update."
+        data:
+          type: object
+          description: "Field values to update."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["find_one_entity"]
+      on-failure: []
+
+  - name: delete_entity
+    description: "Retire (soft-delete) a ShotGrid entity by ID."
+    source_file: scripts/delete_entity.py
+    input_schema:
+      type: object
+      required: ["entity_type", "entity_id"]
+      properties:
+        entity_type:
+          type: string
+          description: "Entity type to delete."
+        entity_id:
+          type: integer
+          description: "ID of the entity to retire."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 30
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: []
+      on-failure: []
