@@ -23,6 +23,11 @@ metadata:
 Run multiple create, update, and delete operations in a single ShotGrid API
 call. Ideal for pipeline automation and bulk data tasks.
 
+The tool accepts optional `project`, `project_id`, and `project_scoped`
+inputs. Creates inherit the default project when `data.project` is missing;
+updates and deletes validate each request against the configured project
+permission policy before the batch is sent.
+
 ## Tools
 
 | Tool | Intent |
@@ -38,3 +43,4 @@ call. Ideal for pipeline automation and bulk data tasks.
 
 - Check individual request items for errors.
 - Verify credentials via `shotgrid-discovery__check_connection`.
+- Delete requests require `admin` permission for the target project.

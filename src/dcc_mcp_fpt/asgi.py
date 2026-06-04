@@ -21,10 +21,7 @@ try:
     if app is None:
         # Fallback: expose the server itself as a callable ASGI app
         # dcc-mcp-core servers typically provide .asgi_app
-        logger.warning(
-            "ShotGridMcpServer does not expose asgi_app; "
-            "ensure dcc-mcp-core is properly installed."
-        )
+        logger.warning("ShotGridMcpServer does not expose asgi_app; ensure dcc-mcp-core is properly installed.")
         app = _server
 except Exception as exc:
     logger.error("Failed to build ASGI application: %s", exc)

@@ -2,29 +2,34 @@
 
 from __future__ import annotations
 
-from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_success, skill_error
+from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill_success
 
 
 @skill_entry
-def main(requests: list, **params):
+def main(requests: list, project=None, project_id=None, project_scoped: bool = True, **params):
     """Execute multiple create/update/delete operations in one call."""
     try:
-        from dcc_mcp_core.server_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server
 
         server = get_current_server()
         if server is None:
-            return skill_error("No ShotGrid server instance available", code="NO_SERVER")
+            return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        results = server.client.batch(requests=requests)
+        results = server.client.batch(
+            requests=requests,
+            project=project,
+            project_id=project_id,
+            project_scoped=project_scoped,
+        )
         return skill_success(
             f"Batch completed: {len(requests)} requests",
             results=results,
             total=len(requests),
         )
     except ImportError as e:
-        return skill_error(f"dcc-mcp-fpt not installed: {e}", code="IMPORT_ERROR")
+        return skill_error(f"dcc-mcp-fpt not installed: {e}", "IMPORT_ERROR")
     except Exception as e:
-        return skill_error(f"Batch failed: {e}", code="BATCH_ERROR")
+        return skill_error(f"Batch failed: {e}", "BATCH_ERROR")
 
 
 if __name__ == "__main__":

@@ -25,6 +25,12 @@ Core entity management for ShotGrid. Provides the standard CRUD surface
 plus single-entity lookup. All destructive operations log the change;
 `delete_entity` retires entities rather than permanently removing them.
 
+All tools accept optional `project`, `project_id`, and `project_scoped`
+inputs. When omitted, the server uses `SHOTGRID_PROJECT` or
+`SHOTGRID_PROJECT_ID` if configured. Reads add a project filter, creates
+inject `data.project` when missing, and updates/deletes enforce the configured
+project permission policy.
+
 ## Tools
 
 | Tool | Intent |
@@ -47,3 +53,5 @@ plus single-entity lookup. All destructive operations log the change;
 - Check `shotgrid-discovery__check_connection` to verify credentials.
 - Verify entity type exists via `shotgrid-discovery__list_entity_types`.
 - Check field names via `shotgrid-schema__get_field_schema`.
+- If permission is denied, inspect `SHOTGRID_PERMISSION_LEVEL` and
+  `SHOTGRID_PROJECT_PERMISSIONS`; delete/retire requires `admin`.

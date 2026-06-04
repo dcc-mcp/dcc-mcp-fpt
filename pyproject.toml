@@ -40,6 +40,7 @@ classifiers = [
 
 dependencies = [
     "dcc-mcp-core>=0.17.54,<1.0.0",
+    "pydantic>=2.0",
     "shotgun_api3>=3.4.0",
 ]
 
@@ -85,11 +86,15 @@ ignore = [
     "E501",   # line length — handled by formatter
     "UP007",  # requires Python 3.10+
     "UP006",  # requires Python 3.9+
+    "UP037",  # quoted annotations preserve Python 3.8 readability
+    "UP045",  # X | None syntax requires Python 3.10+
     "B008",   # function calls in defaults
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+"tests/conftest.py" = ["PLC0415"]
+"src/dcc_mcp_fpt/skills/*/scripts/*.py" = ["PLC0415"]
 
 [tool.ruff.format]
 quote-style = "double"

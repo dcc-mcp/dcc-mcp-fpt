@@ -32,6 +32,7 @@ def shotgrid_client(mock_shotgrid):
         url="https://test.shotgrid.autodesk.com",
         script_name="test_script",
         api_key="test_key",
+        default_project="",
     )
     # Inject mock
     client._sg = mock_shotgrid

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import time
 
-from dcc_mcp_fpt.schema_cache import SchemaCache
-
 
 class TestSchemaCache:
     """Tests for the ShotGrid schema cache."""

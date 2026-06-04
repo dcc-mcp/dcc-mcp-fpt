@@ -23,6 +23,13 @@ tools:
         project_id:
           type: integer
           description: "Project ID for the note."
+        project:
+          type: string
+          description: "Optional project name, code, or tank name. Defaults to SHOTGRID_PROJECT."
+        project_scoped:
+          type: boolean
+          description: "Whether to inject project when a project context is available."
+          default: true
       additionalProperties: false
     output_schema:
       type: object
@@ -64,6 +71,16 @@ tools:
           type: integer
           default: 50
           description: "Maximum notes to return."
+        project:
+          type: string
+          description: "Optional project name, code, or tank name. Defaults to SHOTGRID_PROJECT."
+        project_id:
+          type: integer
+          description: "Optional project ID. Overrides project name/code when provided."
+        project_scoped:
+          type: boolean
+          description: "Whether to add the project filter when a project context is available."
+          default: true
       additionalProperties: false
     output_schema:
       type: object
@@ -104,6 +121,16 @@ tools:
         content:
           type: string
           description: "New body content."
+        project:
+          type: string
+          description: "Optional project name, code, or tank name used for permission checks."
+        project_id:
+          type: integer
+          description: "Optional project ID used for permission checks."
+        project_scoped:
+          type: boolean
+          description: "Whether to validate project ownership when a project context is available."
+          default: true
       additionalProperties: false
     output_schema:
       type: object

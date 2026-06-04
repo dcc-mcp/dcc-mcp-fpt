@@ -1,0 +1,103 @@
+tools:
+  - name: generate_agent_config
+    description: "Generate local, IDE, mcpcall, Docker, gateway, and custom skill configuration snippets."
+    source_file: scripts/generate_agent_config.py
+    input_schema:
+      type: object
+      properties:
+        target:
+          type: string
+          enum: ["all", "ide", "mcpcall", "docker", "env", "skills"]
+          default: "all"
+          description: "Configuration area to generate."
+        host:
+          type: string
+          default: "127.0.0.1"
+          description: "Host used in local MCP URLs."
+        adapter_port:
+          type: integer
+          default: 8765
+          description: "Adapter HTTP port."
+        gateway_port:
+          type: integer
+          default: 9765
+          description: "Gateway HTTP port. Use 0 for standalone-only snippets."
+        project:
+          type: string
+          description: "Default ShotGrid project code/name/tank name."
+        permission_level:
+          type: string
+          enum: ["read", "write", "admin"]
+          default: "read"
+          description: "Default local permission level."
+        custom_skill_paths:
+          type: array
+          items:
+            type: string
+          default: []
+          description: "Additional custom skill search roots."
+        include_secret_values:
+          type: boolean
+          default: false
+          description: "Include current secret env values instead of redacting them."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 10
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["validate_runtime_config"]
+      on-failure: []
+
+  - name: validate_runtime_config
+    description: "Inspect local environment variables needed for dcc-mcp-fpt startup and custom skills."
+    source_file: scripts/validate_runtime_config.py
+    input_schema:
+      type: object
+      properties:
+        require_credentials:
+          type: boolean
+          default: true
+          description: "Report missing ShotGrid credentials as errors."
+        require_project:
+          type: boolean
+          default: false
+          description: "Report missing project scope as an error."
+      additionalProperties: false
+    output_schema:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    execution: sync
+    affinity: any
+    enforce_thread_affinity: false
+    timeout_hint_secs: 10
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+      deferred_hint: false
+    next-tools:
+      on-success: ["generate_agent_config"]
+      on-failure: ["generate_agent_config"]

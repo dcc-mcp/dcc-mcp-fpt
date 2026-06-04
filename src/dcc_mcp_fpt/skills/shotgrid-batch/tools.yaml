@@ -11,6 +11,16 @@ tools:
           description: "List of batch requests, each with: request_type (create/update/delete), entity_type, entity_id (for update/delete), data (for create/update)."
           items:
             type: object
+        project:
+          type: string
+          description: "Optional project name, code, or tank name used for default project injection and permission checks."
+        project_id:
+          type: integer
+          description: "Optional project ID used for default project injection and permission checks."
+        project_scoped:
+          type: boolean
+          description: "Whether to inject or validate project context for each request."
+          default: true
       additionalProperties: false
     output_schema:
       type: object

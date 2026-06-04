@@ -36,6 +36,19 @@ class TestConnectionPool:
         assert connection_pool.size == 1
 
     @patch("dcc_mcp_fpt.connection_pool.Shotgun")
+    def test_get_separates_different_api_keys(self, mock_shotgun_cls, connection_pool):
+        """get does not reuse a connection across different API keys."""
+        first = MagicMock()
+        second = MagicMock()
+        mock_shotgun_cls.side_effect = [first, second]
+
+        sg1 = connection_pool.get("https://test.shotgrid.autodesk.com", "test_script", "test_key_1")
+        sg2 = connection_pool.get("https://test.shotgrid.autodesk.com", "test_script", "test_key_2")
+        assert sg1 is first
+        assert sg2 is second
+        assert connection_pool.size == 2
+
+    @patch("dcc_mcp_fpt.connection_pool.Shotgun")
     def test_release_marks_unused(self, mock_shotgun_cls, connection_pool):
         """release marks connection as not in use."""
         mock_sg = MagicMock()

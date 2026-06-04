@@ -27,3 +27,7 @@ class ShotGridQueryError(ShotGridError):
 
 class ShotGridSchemaError(ShotGridError):
     """Raised when schema loading or caching fails."""
+
+
+class ShotGridPermissionError(ShotGridError):
+    """Raised when a project-scoped policy denies an operation."""
