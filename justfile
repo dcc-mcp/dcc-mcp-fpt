@@ -1,47 +1,84 @@
-# Run tests
+set dotenv-load := true
+set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+set shell := ["bash", "-c"]
+
+default:
+    just --list
+
+# Install development dependencies.
+install-dev:
+    python -m pip install --upgrade pip
+    python -m pip install -e ".[dev]"
+
+# Run unit tests with coverage.
 test:
-    uv pip install --system -e ".[dev]"
-    ruff check src/ tests/
-    pytest --cov=src/dcc_mcp_fpt --cov-report=term
+    python -m pytest tests/ --cov=src/dcc_mcp_fpt --cov-report=term
 
-# Run tests with verbose output
+# Run unit tests with verbose output.
 test-verbose:
-    uv pip install --system -e ".[dev]"
-    pytest -vv --cov=src/dcc_mcp_fpt --cov-report=term
+    python -m pytest tests/ -vv --cov=src/dcc_mcp_fpt --cov-report=term
 
-# Lint only
+# Run ruff lint checks.
 lint:
-    ruff check src/ tests/
+    python -m ruff check src/ tests/ tools/
 
-# Format code
+# Validate bundled skill metadata.
+lint-skills:
+    python tools/lint_skills.py
+
+# Format code.
 format:
-    ruff format src/ tests/
+    python -m ruff format src/ tests/ tools/
 
-# Build package
+# Check formatting without writing changes.
+format-check:
+    python -m ruff format --check src/ tests/ tools/
+
+# Build package artifacts and verify metadata.
 build:
-    uv pip install --system hatchling build
+    python -m pip install build twine
     python -m build
+    python -m twine check dist/*
 
-# Clean build artifacts
-clean:
-    rm -rf dist build *.egg-info .pytest_cache .ruff_cache
+# Local CI gate used by GitHub Actions.
+ci: lint format-check lint-skills test build
 
-# Run the server locally (HTTP mode)
+# Run the server locally in HTTP mode.
 serve:
-    uv run dcc-mcp-fpt http --host 0.0.0.0 --port 8765
+    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765
 
-# Run the server in stdio mode (for Claude Desktop)
+# Run the server locally and join the dcc-mcp gateway.
+serve-gateway:
+    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765
+
+# Run the server locally with gateway registration disabled.
+serve-standalone:
+    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765 --no-gateway
+
+# Run the published package entry via uvx.
+serve-uvx:
+    uvx dcc-mcp-fpt
+
+# Run the server in stdio mode.
 serve-stdio:
-    uv run dcc-mcp-fpt stdio
+    python -m dcc_mcp_fpt stdio
 
-# Build Docker image
+# Run a safe dry-run of the live ShotGrid smoke. Skips mutations.
+live-crud-smoke-dry:
+    python tools/shotgrid_live_crud_smoke.py
+
+# Run live ShotGrid create/find/update/delete against the configured project.
+live-crud-smoke:
+    python tools/shotgrid_live_crud_smoke.py --confirm
+
+# Build Docker image.
 docker-build:
     docker build -t dcc-mcp-fpt .
 
-# Run Docker container
+# Run Docker container with ShotGrid env from the current shell or .env.
 docker-run:
-    docker run --rm -p 8765:8765 \
-        -e SHOTGRID_URL=${SHOTGRID_URL} \
-        -e SHOTGRID_SCRIPT_NAME=${SHOTGRID_SCRIPT_NAME} \
-        -e SHOTGRID_SCRIPT_KEY=${SHOTGRID_SCRIPT_KEY} \
-        dcc-mcp-fpt
+    docker run --rm -p 8765:8765 -p 9765:9765 -e SHOTGRID_URL -e SHOTGRID_SCRIPT_NAME -e SHOTGRID_SCRIPT_KEY -e SHOTGRID_PROJECT -e SHOTGRID_PROJECT_ID -e SHOTGRID_PERMISSION_LEVEL -e SHOTGRID_PROJECT_PERMISSIONS -e SHOTGRID_READ_ONLY -e DCC_MCP_GATEWAY_PORT -e DCC_MCP_REGISTRY_DIR -e DCC_MCP_FPT_GATEWAY_SCENE -e DCC_MCP_FPT_GATEWAY_DISPLAY_NAME -e DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER -e DCC_MCP_FPT_SKILL_PATHS -e DCC_MCP_SKILL_PATHS dcc-mcp-fpt
+
+# Clean build and test artifacts.
+clean:
+    python -c "import pathlib, shutil; [shutil.rmtree(p, ignore_errors=True) for p in ('dist', 'build', '.pytest_cache', '.ruff_cache', 'htmlcov')]; [shutil.rmtree(p, ignore_errors=True) for p in pathlib.Path('.').glob('*.egg-info')]; [p.unlink(missing_ok=True) for p in pathlib.Path('.').glob('.coverage*')]"

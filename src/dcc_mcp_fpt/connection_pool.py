@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from shotgun_api3 import Shotgun
 
@@ -66,7 +67,7 @@ class ConnectionPool:
         Returns:
             An authenticated Shotgun instance.
         """
-        conn_key = f"{url}:{script_name}"
+        conn_key = _connection_key(url, script_name, api_key, proxy)
         with self._lock:
             # Evict stale connections
             self._evict_idle()
@@ -79,17 +80,37 @@ class ConnectionPool:
                 return pooled.sg
 
             # Create new connection
+            if len(self._connections) >= self._max_size:
+                self._evict_oldest_available()
+            if len(self._connections) >= self._max_size:
+                raise RuntimeError("ShotGrid connection pool is at capacity")
+
             sg = Shotgun(url, script_name, api_key, http_proxy=proxy)
-            self._connections[conn_key] = PooledConnection(sg)
+            pooled = PooledConnection(sg)
+            pooled.in_use = True
+            self._connections[conn_key] = pooled
             return sg
 
-    def release(self, url: str, script_name: str) -> None:
+    def release(
+        self,
+        url: str,
+        script_name: str,
+        api_key: Optional[str] = None,
+        proxy: Optional[str] = None,
+    ) -> None:
         """Release a connection back to the pool."""
-        conn_key = f"{url}:{script_name}"
+        conn_key = _connection_key(url, script_name, api_key, proxy) if api_key is not None else None
         with self._lock:
-            pooled = self._connections.get(conn_key)
-            if pooled is not None:
-                pooled.in_use = False
+            if conn_key is not None:
+                pooled = self._connections.get(conn_key)
+                if pooled is not None:
+                    pooled.in_use = False
+                return
+
+            prefix = f"{url.rstrip('/')}:{script_name}:"
+            for key, pooled in self._connections.items():
+                if key.startswith(prefix):
+                    pooled.in_use = False
 
     def close_all(self) -> None:
         """Close all connections in the pool."""
@@ -116,6 +137,19 @@ class ConnectionPool:
             del self._connections[key]
             logger.debug("Evicted idle connection: %s", key)
 
+    def _evict_oldest_available(self) -> None:
+        """Evict the oldest idle connection when the pool reaches capacity."""
+        available = [(key, pooled) for key, pooled in self._connections.items() if not pooled.in_use]
+        if not available:
+            return
+        key, pooled = min(available, key=lambda item: item[1].last_used)
+        try:
+            pooled.sg.close()
+        except Exception:
+            pass
+        del self._connections[key]
+        logger.debug("Evicted oldest available connection: %s", key)
+
     @property
     def size(self) -> int:
         """Number of active connections."""
@@ -126,3 +160,14 @@ class ConnectionPool:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close_all()
+
+
+def _connection_key(
+    url: str,
+    script_name: str,
+    api_key: str,
+    proxy: Optional[str],
+) -> str:
+    key_hash = hashlib.sha256(api_key.encode("utf-8")).hexdigest()[:12]
+    proxy_key = proxy or ""
+    return f"{url.rstrip('/')}:{script_name}:{key_hash}:{proxy_key}"

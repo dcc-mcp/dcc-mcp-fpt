@@ -20,6 +20,15 @@ class TestShotGridClient:
         assert info.authenticated is True
         assert info.url == "https://test.shotgrid.autodesk.com"
 
+    def test_get_connection_info_formats_list_version(self, shotgrid_client):
+        """ShotGrid API list versions are normalized for diagnostics."""
+        shotgrid_client._sg.server_info = {"version": [8, 86, 0]}
+
+        info = shotgrid_client.get_connection_info()
+
+        assert info.authenticated is True
+        assert info.server_version == "8.86.0"
+
     def test_get_connection_info_without_connect(self):
         """get_connection_info returns not authenticated before connect."""
         client = ShotGridClient(

@@ -48,53 +48,94 @@ uv pip install dcc-mcp-fpt
 export SHOTGRID_URL="https://mysite.shotgrid.autodesk.com"
 export SHOTGRID_SCRIPT_NAME="my_script_name"
 export SHOTGRID_SCRIPT_KEY="my_script_key"
+export SHOTGRID_PROJECT="my_project_code"
+export SHOTGRID_PERMISSION_LEVEL="read"
 ```
 
-### 运行
+### 本地启动
 
-**HTTP 模式：**
+最短的本地启动方式：
+
 ```bash
-dcc-mcp-fpt http --host 0.0.0.0 --port 8765
-# MCP 端点: http://localhost:8765/mcp
+uvx dcc-mcp-fpt
 ```
 
-**stdio 模式（用于 Claude Desktop）：**
+默认会启动适配器端点 `http://127.0.0.1:8765/mcp`，并在
+`http://127.0.0.1:9765/mcp` 启用 dcc-mcp gateway。如果 9765 上已经有健康的
+gateway，FPT 适配器会注册进去一起工作；如果没有，core 的 gateway 选举路径可以
+在当前本地会话里持有该端口。
+
+只有在不希望注册 gateway 时才使用独立模式：
+
 ```bash
-dcc-mcp-fpt stdio
+uvx dcc-mcp-fpt --no-gateway
+# 等价于: uvx dcc-mcp-fpt --gateway-port 0
 ```
 
-**ASGI 模式（用于 uvicorn/gunicorn）：**
+开发 checkout 下也可以使用：
+
+```bash
+python -m dcc_mcp_fpt
+just serve-gateway
+just serve-standalone
+```
+
+ASGI 模式仍然可用于 uvicorn/gunicorn：
+
 ```bash
 uvicorn dcc_mcp_fpt.asgi:app --host 0.0.0.0 --port 8000
 ```
 
-**Docker：**
-```bash
-docker run --rm -p 8765:8765 \
-    -e SHOTGRID_URL="$SHOTGRID_URL" \
-    -e SHOTGRID_SCRIPT_NAME="$SHOTGRID_SCRIPT_NAME" \
-    -e SHOTGRID_SCRIPT_KEY="$SHOTGRID_SCRIPT_KEY" \
-    dcc-mcp-fpt
+### IDE MCP 配置
+
+如果 IDE 支持 Streamable HTTP MCP，直接指向 gateway URL：
+
+```json
+{
+  "mcpServers": {
+    "shotgrid": {
+      "url": "http://127.0.0.1:9765/mcp"
+    }
+  }
+}
 ```
 
-### Claude Desktop 配置
-
-添加到 `claude_desktop_config.json`：
+如果 IDE 只支持 stdio MCP，可以使用 `uvx`：
 
 ```json
 {
   "mcpServers": {
     "shotgrid": {
       "command": "uvx",
-      "args": ["dcc-mcp-fpt", "stdio"],
+      "args": ["dcc-mcp-fpt", "stdio", "--no-gateway"],
       "env": {
         "SHOTGRID_URL": "https://mysite.shotgrid.autodesk.com",
         "SHOTGRID_SCRIPT_NAME": "my_script_name",
-        "SHOTGRID_SCRIPT_KEY": "my_script_key"
+        "SHOTGRID_SCRIPT_KEY": "my_script_key",
+        "SHOTGRID_PROJECT": "my_project_code",
+        "SHOTGRID_PERMISSION_LEVEL": "read"
       }
     }
   }
 }
+```
+
+### mcpcall
+
+`uvx dcc-mcp-fpt` 启动后，可以通过 gateway 做 smoke：
+
+```bash
+mcpcall doctor --url http://127.0.0.1:9765/mcp --json
+mcpcall list --url http://127.0.0.1:9765/mcp --json
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-discovery__check_connection
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-discovery__get_server_info
+```
+
+也可以复用 IDE 的 `mcpServers` JSON：
+
+```bash
+mcpcall config import --from ./mcp.json --output ./mcpcall.json
+mcpcall list --config ./mcpcall.json --server shotgrid --json
 ```
 
 ## 工具概览
@@ -103,6 +144,7 @@ docker run --rm -p 8765:8765 \
 | 技能 | 工具 |
 |------|------|
 | `shotgrid-discovery` | `check_connection`, `list_entity_types`, `get_server_info` |
+| `shotgrid-setup` | `generate_agent_config`, `validate_runtime_config` |
 | `shotgrid-schema` | `get_schema`, `get_field_schema`, `list_entity_types` |
 
 ### 按需加载
@@ -155,8 +197,133 @@ AI 助手 (Claude, Cursor, Copilot)
 | `SHOTGRID_URL` | 是 | ShotGrid 服务器 URL |
 | `SHOTGRID_SCRIPT_NAME` | 是 | Script/API 用户名 |
 | `SHOTGRID_SCRIPT_KEY` | 是 | Script/API 密钥 |
+| `SHOTGRID_PROJECT` | 否 | 默认项目名称、代码或 tank name |
+| `SHOTGRID_PROJECT_ID` | 否 | 默认项目 ID；设置后优先于 `SHOTGRID_PROJECT` |
+| `SHOTGRID_PERMISSION_LEVEL` | 否 | 默认权限级别：`read`、`write` 或 `admin` |
+| `SHOTGRID_PROJECT_PERMISSIONS` | 否 | JSON 或 CSV 格式的项目权限白名单 |
+| `SHOTGRID_READ_ONLY` | 否 | 设置为 `1` 时禁止 create/update/delete |
+| `DCC_MCP_GATEWAY_PORT` | 否 | dcc-mcp 网关端口；设置为 `0` 表示仅独立运行 |
+| `DCC_MCP_REGISTRY_DIR` | 否 | 共享网关 registry 目录 |
+| `DCC_MCP_FPT_GATEWAY_SCENE` | 否 | 网关上下文标签；默认 `project:<SHOTGRID_PROJECT>` |
+| `DCC_MCP_FPT_GATEWAY_DISPLAY_NAME` | 否 | 网关/管理界面展示的可读实例名称 |
+| `DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER` | 否 | 设置为 `0` 时关闭 core 网关选举/故障转移 |
+| `DCC_MCP_FPT_SKILL_PATHS` | 否 | FPT 专用 custom skill 搜索根目录（Windows 用 `;`，Unix 用 `:`） |
+| `DCC_MCP_SKILL_PATHS` | 否 | 所有 dcc-mcp 适配器共享的全局 custom skill 搜索根目录 |
 | `DCC_MCP_SHOTGRID_MINIMAL` | 否 | 逗号分隔的最小模式技能列表 |
 | `DCC_MCP_SHOTGRID_DEFAULT_TOOLS` | 否 | 逗号分隔的默认激活工具 |
+
+### 项目范围与权限
+
+CRUD 和 batch 工具都支持可选的 `project`、`project_id` 和 `project_scoped`
+输入。配置默认项目后，读操作会自动补 ShotGrid `project` 过滤条件，创建操作
+会在缺少 `data.project` 时自动注入项目引用，更新和删除会在写入前校验实体所属
+项目。
+
+权限级别如下：
+
+| 级别 | 允许操作 |
+|------|----------|
+| `read` | `find`、`find_one`、schema、连接检查 |
+| `write` | `read` 加 create/update，以及不含 delete 的 batch |
+| `admin` | `write` 加 delete/retire |
+
+示例：
+
+```bash
+export SHOTGRID_PROJECT="my_project_code"
+export SHOTGRID_PERMISSION_LEVEL="write"
+export SHOTGRID_PROJECT_PERMISSIONS='{"my_project_code":"write","id:456":"read"}'
+```
+
+### 网关集成
+
+该适配器使用与 Maya、Blender、Houdini、3ds Max 适配器一致的
+`DccServerOptions.from_env(...)` 网关契约。设置 `DCC_MCP_GATEWAY_PORT` 或
+`--gateway-port` 为正整数后，服务会发布 FPT 运行时条目，包含安全的展示名、
+项目上下文标签、版本和网关选举诊断信息。
+
+```bash
+export SHOTGRID_PROJECT="my_project_code"
+export DCC_MCP_GATEWAY_PORT=9765
+export DCC_MCP_FPT_GATEWAY_DISPLAY_NAME="FPT my_project_code"
+
+just serve-gateway
+```
+
+本地独立测试可使用 `--gateway-port 0` 或 `just serve-standalone`。
+`shotgrid-discovery__get_server_info` 工具会返回 `gateway` 诊断对象，方便 agent
+和 CI 确认当前实例是否已经加入网关。
+
+### Agent 自动配置 Skill
+
+`shotgrid-setup` 会在启动时加载，agent 可以直接用它生成本地配置，不需要猜项目
+约定：
+
+```bash
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-setup__validate_runtime_config
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-setup__generate_agent_config target=all
+```
+
+生成内容包含 `uvx dcc-mcp-fpt`、HTTP/stdio IDE 配置、mcpcall 命令、Docker
+示例和 custom skill path 环境变量。默认会隐藏 secret 值。
+
+### Custom Skills
+
+将 `DCC_MCP_FPT_SKILL_PATHS` 指向某个 skill package 目录，或者指向包含多个
+skill package 子目录的父目录：
+
+```bash
+# Windows 多个目录用分号。
+set DCC_MCP_FPT_SKILL_PATHS=C:\studio\fpt-skills;C:\show\fpt-skills
+
+# Linux/macOS 多个目录用冒号。
+export DCC_MCP_FPT_SKILL_PATHS=/studio/fpt-skills:/show/fpt-skills
+
+uvx dcc-mcp-fpt
+```
+
+跨适配器共享的 skills 使用 `DCC_MCP_SKILL_PATHS`。通过 gateway admin 添加的
+skill path 也会在 dcc-mcp-core 启动或 reload 时被读取。
+
+### 容器部署
+
+本地构建并运行：
+
+```bash
+docker build -t dcc-mcp-fpt .
+docker run --rm \
+  -p 8765:8765 \
+  -p 9765:9765 \
+  --env-file .env \
+  dcc-mcp-fpt
+```
+
+自定义 skills 可以挂载到 `/skills`；镜像默认设置了
+`DCC_MCP_FPT_SKILL_PATHS=/skills`：
+
+```bash
+docker run --rm \
+  -p 8765:8765 \
+  -p 9765:9765 \
+  --env-file .env \
+  -v /studio/fpt-skills:/skills:ro \
+  dcc-mcp-fpt
+```
+
+最小 compose：
+
+```yaml
+services:
+  dcc-mcp-fpt:
+    image: dcc-mcp-fpt
+    ports:
+      - "8765:8765"
+      - "9765:9765"
+    env_file:
+      - .env
+    volumes:
+      - /studio/fpt-skills:/skills:ro
+```
 
 ## 本地开发
 
@@ -176,6 +343,33 @@ ruff check src/ tests/
 # 格式化代码
 ruff format src/ tests/
 ```
+
+### 本地 Live CRUD Smoke
+
+将 `.env.example` 复制为 `.env`，填入本地凭证，并保持该文件不提交。dry-run
+命令只检查配置，默认跳过写入：
+
+```bash
+just install-dev
+just live-crud-smoke-dry
+```
+
+要对配置项目执行真实的 create/find/update/delete，请确认该项目具备 admin 级别：
+
+```bash
+export SHOTGRID_PERMISSION_LEVEL="admin"
+export SHOTGRID_LIVE_CRUD_CONFIRM=1
+just live-crud-smoke
+```
+
+该 smoke 会创建临时实体、更新它，并在结束时 retire 清理。
+
+## CI/CD
+
+- `CI` 在 Linux、Windows、macOS 上覆盖 Python 3.8-3.12。
+- lint、format check、技能元数据检查、CLI smoke、包构建和 Docker build 是独立 gate。
+- `Release` 使用 release-please 管理版本，构建 wheel/sdist，通过 PyPI Trusted Publishing 发布，并把 dist 附加到 GitHub Release。
+- `Live ShotGrid Smoke` 仅手动触发，读取 GitHub Secrets；默认 dry-run，只有确认后才执行真实 CRUD。
 
 ## 依赖
 

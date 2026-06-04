@@ -2,18 +2,30 @@
 
 from __future__ import annotations
 
-from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_success, skill_error
+from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill_success
 
 
 @skill_entry
-def main(entity_type: str, filters=None, fields=None, order=None, limit: int = 500, page: int = 1, **params):
+def main(
+    entity_type: str,
+    filters=None,
+    fields=None,
+    order=None,
+    limit: int = 500,
+    page: int = 1,
+    retired_only: bool = False,
+    project=None,
+    project_id=None,
+    project_scoped: bool = True,
+    **params,
+):
     """Search entities of a given type."""
     try:
-        from dcc_mcp_core.server_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server
 
         server = get_current_server()
         if server is None:
-            return skill_error("No ShotGrid server instance available", code="NO_SERVER")
+            return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
         results = server.client.find(
             entity_type=entity_type,
@@ -21,7 +33,11 @@ def main(entity_type: str, filters=None, fields=None, order=None, limit: int = 5
             fields=fields,
             order=order,
             limit=limit,
+            retired_only=retired_only,
             page=page,
+            project=project,
+            project_id=project_id,
+            project_scoped=project_scoped,
         )
         return skill_success(
             f"Found {len(results)} {entity_type}(s)",
@@ -30,9 +46,9 @@ def main(entity_type: str, filters=None, fields=None, order=None, limit: int = 5
             page=page,
         )
     except ImportError as e:
-        return skill_error(f"dcc-mcp-fpt not installed: {e}", code="IMPORT_ERROR")
+        return skill_error(f"dcc-mcp-fpt not installed: {e}", "IMPORT_ERROR")
     except Exception as e:
-        return skill_error(f"Find failed: {e}", code="QUERY_ERROR")
+        return skill_error(f"Find failed: {e}", "QUERY_ERROR")
 
 
 if __name__ == "__main__":

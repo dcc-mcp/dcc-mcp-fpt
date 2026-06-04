@@ -2,20 +2,26 @@
 
 from __future__ import annotations
 
-from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_success, skill_error
+from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill_success
 
 
 @skill_entry
-def main(entity_type: str, data: dict, **params):
+def main(entity_type: str, data: dict, project=None, project_id=None, project_scoped: bool = True, **params):
     """Create a new entity with the given field values."""
     try:
-        from dcc_mcp_core.server_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server
 
         server = get_current_server()
         if server is None:
-            return skill_error("No ShotGrid server instance available", code="NO_SERVER")
+            return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        result = server.client.create(entity_type=entity_type, data=data)
+        result = server.client.create(
+            entity_type=entity_type,
+            data=data,
+            project=project,
+            project_id=project_id,
+            project_scoped=project_scoped,
+        )
         entity_id = result.get("id", "unknown")
         return skill_success(
             f"Created {entity_type} id={entity_id}",
@@ -24,9 +30,9 @@ def main(entity_type: str, data: dict, **params):
             entity_type=entity_type,
         )
     except ImportError as e:
-        return skill_error(f"dcc-mcp-fpt not installed: {e}", code="IMPORT_ERROR")
+        return skill_error(f"dcc-mcp-fpt not installed: {e}", "IMPORT_ERROR")
     except Exception as e:
-        return skill_error(f"Create failed: {e}", code="CREATE_ERROR")
+        return skill_error(f"Create failed: {e}", "CREATE_ERROR")
 
 
 if __name__ == "__main__":

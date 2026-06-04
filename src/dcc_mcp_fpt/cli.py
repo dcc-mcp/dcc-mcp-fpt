@@ -9,11 +9,14 @@ import argparse
 import logging
 import os
 import sys
+import time
+from pathlib import Path
 from typing import Optional
 
 from dcc_mcp_fpt.server import ShotGridMcpServer, start_server
 
 logger = logging.getLogger(__name__)
+DEFAULT_GATEWAY_PORT = 9765
 
 
 def setup_logging(verbose: bool = False) -> None:
@@ -55,6 +58,39 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Port for HTTP server (default: 8765)",
     )
 
+    # Gateway options
+    parser.add_argument(
+        "--gateway-port",
+        type=int,
+        default=_env_int("DCC_MCP_GATEWAY_PORT", DEFAULT_GATEWAY_PORT),
+        help="dcc-mcp gateway port. Defaults to DCC_MCP_GATEWAY_PORT or 9765; use 0 to disable.",
+    )
+    parser.add_argument(
+        "--no-gateway",
+        action="store_true",
+        help="Disable gateway registration and run only the adapter endpoint.",
+    )
+    parser.add_argument(
+        "--registry-dir",
+        default=os.environ.get("DCC_MCP_REGISTRY_DIR", ""),
+        help="Gateway registry directory. Defaults to DCC_MCP_REGISTRY_DIR.",
+    )
+    parser.add_argument(
+        "--gateway-scene",
+        default=os.environ.get("DCC_MCP_FPT_GATEWAY_SCENE", ""),
+        help="Gateway context label. Defaults to the configured ShotGrid project.",
+    )
+    parser.add_argument(
+        "--gateway-display-name",
+        default=os.environ.get("DCC_MCP_FPT_GATEWAY_DISPLAY_NAME", ""),
+        help="Human-readable FPT instance label shown in gateway/admin surfaces.",
+    )
+    parser.add_argument(
+        "--disable-gateway-failover",
+        action="store_true",
+        help="Disable core gateway election/failover for this FPT server.",
+    )
+
     # ShotGrid connection
     parser.add_argument(
         "--shotgrid-url",
@@ -71,17 +107,41 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=os.environ.get("SHOTGRID_SCRIPT_KEY", ""),
         help="ShotGrid script key. Defaults to SHOTGRID_SCRIPT_KEY env var.",
     )
+    parser.add_argument(
+        "--shotgrid-project",
+        default=os.environ.get("SHOTGRID_PROJECT", os.environ.get("SHOTGRID_DEFAULT_PROJECT", "")),
+        help="Default ShotGrid project name, code, or tank name for scoped CRUD tools.",
+    )
+    parser.add_argument(
+        "--shotgrid-project-id",
+        type=int,
+        default=_env_int("SHOTGRID_PROJECT_ID"),
+        help="Default ShotGrid project ID for scoped CRUD tools.",
+    )
+    parser.add_argument(
+        "--shotgrid-permission-level",
+        choices=("read", "write", "admin"),
+        default=os.environ.get("SHOTGRID_PERMISSION_LEVEL", ""),
+        help="Fallback permission level for the default project.",
+    )
 
     # Skills
     parser.add_argument(
         "--skills-dir",
         default=None,
-        help="Path to custom skills directory.",
+        help="Path to an alternate bundled skills directory for adapter development.",
+    )
+    parser.add_argument(
+        "--skill-path",
+        action="append",
+        default=[],
+        help=("Additional custom skill search root. Repeatable. Merged into DCC_MCP_FPT_SKILL_PATHS before startup."),
     )
 
     # General
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable debug logging.",
     )
@@ -94,9 +154,19 @@ def main(argv: Optional[list] = None) -> None:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
+    if args.shotgrid_permission_level:
+        os.environ["SHOTGRID_PERMISSION_LEVEL"] = args.shotgrid_permission_level
+    args.gateway_port = _normalize_gateway_port(args)
+    _apply_skill_paths(args.skill_path)
+
     setup_logging(args.verbose)
 
-    logger.info("Starting dcc-mcp-fpt (mode=%s, port=%d)", args.mode, args.port)
+    logger.info(
+        "Starting dcc-mcp-fpt (mode=%s, port=%d, gateway_port=%s)",
+        args.mode,
+        args.port,
+        args.gateway_port,
+    )
 
     try:
         if args.mode == "http":
@@ -119,14 +189,23 @@ def _run_http(args: argparse.Namespace) -> None:
         shotgrid_url=args.shotgrid_url or None,
         shotgrid_script_name=args.shotgrid_script_name or None,
         shotgrid_script_key=args.shotgrid_script_key or None,
+        shotgrid_project=args.shotgrid_project or None,
+        shotgrid_project_id=args.shotgrid_project_id,
+        gateway_port=args.gateway_port,
+        registry_dir=args.registry_dir or None,
+        gateway_scene=args.gateway_scene or None,
+        gateway_display_name=args.gateway_display_name or None,
+        enable_gateway_failover=False if args.disable_gateway_failover else None,
+        skills_dir=Path(args.skills_dir) if args.skills_dir else None,
     )
     url = server.mcp_url() if hasattr(server, "mcp_url") else f"http://{args.host}:{args.port}/mcp"
     logger.info("ShotGrid MCP server listening at %s", url)
     print(f"MCP endpoint: {url}")
+    if args.gateway_port and args.gateway_port > 0:
+        print(f"Gateway endpoint: http://127.0.0.1:{args.gateway_port}/mcp")
 
     try:
         # Keep running until interrupted
-        import time
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
@@ -145,6 +224,14 @@ def _run_stdio(args: argparse.Namespace) -> None:
         shotgrid_url=args.shotgrid_url or None,
         shotgrid_script_name=args.shotgrid_script_name or None,
         shotgrid_script_key=args.shotgrid_script_key or None,
+        shotgrid_project=args.shotgrid_project or None,
+        shotgrid_project_id=args.shotgrid_project_id,
+        gateway_port=args.gateway_port,
+        registry_dir=args.registry_dir or None,
+        gateway_scene=args.gateway_scene or None,
+        gateway_display_name=args.gateway_display_name or None,
+        enable_gateway_failover=False if args.disable_gateway_failover else None,
+        skills_dir=Path(args.skills_dir) if args.skills_dir else None,
     )
     # In stdio mode, the MCP protocol runs over stdin/stdout
     # The server handles the protocol internally
@@ -161,7 +248,35 @@ def _run_asgi(args: argparse.Namespace) -> None:
         args.host,
         args.port,
     )
-    print(
-        "Run with: uvicorn dcc_mcp_fpt.asgi:app "
-        f"--host {args.host} --port {args.port}"
-    )
+    print(f"Run with: uvicorn dcc_mcp_fpt.asgi:app --host {args.host} --port {args.port}")
+
+
+def _env_int(name: str, default: Optional[int] = None) -> Optional[int]:
+    value = os.environ.get(name)
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+
+
+def _normalize_gateway_port(args: argparse.Namespace) -> Optional[int]:
+    """Resolve CLI gateway switches to the final port value."""
+    if getattr(args, "no_gateway", False):
+        return 0
+    return args.gateway_port
+
+
+def _apply_skill_paths(skill_paths: list[str]) -> None:
+    """Merge repeatable --skill-path values into DCC_MCP_FPT_SKILL_PATHS."""
+    cleaned = [path for path in skill_paths if path]
+    if not cleaned:
+        return
+
+    existing = os.environ.get("DCC_MCP_FPT_SKILL_PATHS", "")
+    parts = [part for part in existing.split(os.pathsep) if part] if existing else []
+    for path in cleaned:
+        if path not in parts:
+            parts.append(path)
+    os.environ["DCC_MCP_FPT_SKILL_PATHS"] = os.pathsep.join(parts)

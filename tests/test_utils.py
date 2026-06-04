@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from dcc_mcp_fpt.utils import (
@@ -91,31 +89,37 @@ class TestToHumanReadable:
 
     def test_resolves_entity_ref(self):
         """Entity references become simplified dicts."""
-        result = to_human_readable({
-            "id": 1,
-            "type": "Shot",
-            "project": {"type": "Project", "id": 5, "name": "Demo"},
-        })
+        result = to_human_readable(
+            {
+                "id": 1,
+                "type": "Shot",
+                "project": {"type": "Project", "id": 5, "name": "Demo"},
+            }
+        )
         assert result["project"] == {"id": 5, "type": "Project", "name": "Demo"}
 
     def test_resolves_multi_entity(self):
         """Multi-entity fields become lists of simplified refs."""
-        result = to_human_readable({
-            "id": 1,
-            "assets": [
-                {"type": "Asset", "id": 10, "name": "Hero"},
-                {"type": "Asset", "id": 11, "name": "Prop"},
-            ],
-        })
+        result = to_human_readable(
+            {
+                "id": 1,
+                "assets": [
+                    {"type": "Asset", "id": 10, "name": "Hero"},
+                    {"type": "Asset", "id": 11, "name": "Prop"},
+                ],
+            }
+        )
         assert len(result["assets"]) == 2
         assert result["assets"][0]["name"] == "Hero"
 
     def test_passes_through_primitives(self):
         """Primitive values pass through unchanged."""
-        result = to_human_readable({
-            "code": "SH001",
-            "sg_status": "ip",
-            "id": 1,
-        })
+        result = to_human_readable(
+            {
+                "code": "SH001",
+                "sg_status": "ip",
+                "id": 1,
+            }
+        )
         assert result["code"] == "SH001"
         assert result["sg_status"] == "ip"
