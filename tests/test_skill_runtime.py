@@ -61,3 +61,22 @@ def test_find_entities_no_server_error_uses_current_skill_error_signature():
 
     assert result["success"] is False
     assert result["error"] == "NO_SERVER"
+
+
+def test_find_entities_forwards_meta_to_request_client():
+    """CRUD skills forward MCP metadata to request-scoped server clients."""
+    module = _load_skill_script("src/dcc_mcp_fpt/skills/shotgrid-crud/scripts/find_entities.py")
+    client = MagicMock()
+    client.find.return_value = []
+    server = MagicMock()
+    server.client_for_request.return_value = client
+    set_current_server(server)
+    meta = {"credential_profile": "sg-read-zombie", "agent_context": {"actor_id": "artist-42"}}
+
+    try:
+        result = module.main(entity_type="Shot", _meta=meta)
+    finally:
+        clear_current_server(server)
+
+    assert result["success"] is True
+    server.client_for_request.assert_called_once_with({"_meta": meta})

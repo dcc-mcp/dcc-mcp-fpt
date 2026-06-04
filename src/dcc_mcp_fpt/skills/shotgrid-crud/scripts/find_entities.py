@@ -21,13 +21,13 @@ def main(
 ):
     """Search entities of a given type."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        results = server.client.find(
+        results = get_request_client(server, params).find(
             entity_type=entity_type,
             filters=filters or [],
             fields=fields,

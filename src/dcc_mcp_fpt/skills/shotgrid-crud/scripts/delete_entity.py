@@ -9,13 +9,13 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(entity_type: str, entity_id: int, project=None, project_id=None, project_scoped: bool = True, **params):
     """Retire (soft-delete) an entity."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        result = server.client.delete(
+        result = get_request_client(server, params).delete(
             entity_type=entity_type,
             entity_id=entity_id,
             project=project,

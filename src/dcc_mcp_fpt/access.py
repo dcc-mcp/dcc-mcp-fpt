@@ -80,6 +80,47 @@ class ShotGridAccessPolicy:
             read_only=_env_truthy(os.environ.get("SHOTGRID_READ_ONLY")),
         )
 
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> "ShotGridAccessPolicy":
+        """Build a policy from a profile/request mapping."""
+        permission = value.get("permission_level") or value.get("permission_hint") or value.get("permission")
+        project_permissions = value.get("project_permissions")
+        if isinstance(project_permissions, (dict, list)):
+            raw_project_permissions = json.dumps(project_permissions)
+        else:
+            raw_project_permissions = str(project_permissions or "")
+        return cls(
+            default_level=_parse_level(str(permission) if permission else None, PermissionLevel.ADMIN),
+            project_levels=_parse_project_permissions(raw_project_permissions),
+            read_only=_mapping_truthy(value.get("read_only")),
+        )
+
+    def merge_min(self, other: "ShotGridAccessPolicy") -> "ShotGridAccessPolicy":
+        """Return a policy capped by both policies.
+
+        Empty project-level mappings mean "no project allowlist". When both
+        sides define allowlists, only projects present in both remain allowed.
+        """
+        project_levels: Dict[str, PermissionLevel]
+        if self.project_levels and other.project_levels:
+            shared = set(self.project_levels).intersection(other.project_levels)
+            project_levels = {
+                key: min(self.project_levels[key], other.project_levels[key], key=_LEVEL_RANK.get)
+                for key in shared
+            }
+        elif self.project_levels:
+            project_levels = dict(self.project_levels)
+        elif other.project_levels:
+            project_levels = dict(other.project_levels)
+        else:
+            project_levels = {}
+
+        return ShotGridAccessPolicy(
+            default_level=min(self.default_level, other.default_level, key=_LEVEL_RANK.get),
+            project_levels=project_levels,
+            read_only=self.read_only or other.read_only,
+        )
+
     def require(
         self,
         operation: str,
@@ -185,6 +226,11 @@ def _parse_level(raw: Optional[str], default: PermissionLevel) -> PermissionLeve
         raise ValueError("SHOTGRID_PERMISSION_LEVEL must be one of: read, write, admin") from exc
 
 
+def parse_permission_level(raw: Optional[str], default: PermissionLevel) -> PermissionLevel:
+    """Parse a public permission level string."""
+    return _parse_level(raw, default)
+
+
 def _normalize_key(value: str) -> str:
     return value.strip().lower()
 
@@ -193,6 +239,14 @@ def _env_truthy(value: Optional[str]) -> bool:
     if value is None:
         return False
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _mapping_truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _project_label(

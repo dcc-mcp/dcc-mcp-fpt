@@ -53,3 +53,31 @@ def test_read_only_overrides_write_level():
 
     with pytest.raises(ShotGridPermissionError, match="read-only"):
         policy.require("update", project_ref=ProjectRef(id=192), entity_type="Shot")
+
+
+def test_merge_min_caps_permission_level():
+    base = ShotGridAccessPolicy(default_level=PermissionLevel.ADMIN)
+    request = ShotGridAccessPolicy(default_level=PermissionLevel.READ)
+
+    merged = base.merge_min(request)
+
+    assert merged.default_level == PermissionLevel.READ
+    with pytest.raises(ShotGridPermissionError, match="requires write"):
+        merged.require("create", project_ref=ProjectRef(id=192), entity_type="Shot")
+
+
+def test_merge_min_intersects_project_allowlists():
+    base = ShotGridAccessPolicy(
+        default_level=PermissionLevel.ADMIN,
+        project_levels={"demo": PermissionLevel.ADMIN, "other": PermissionLevel.ADMIN},
+    )
+    request = ShotGridAccessPolicy(
+        default_level=PermissionLevel.WRITE,
+        project_levels={"demo": PermissionLevel.READ},
+    )
+
+    merged = base.merge_min(request)
+
+    assert merged.project_levels == {"demo": PermissionLevel.READ}
+    with pytest.raises(ShotGridPermissionError, match="does not allow"):
+        merged.require("find", project_ref=ProjectRef(id=2, name="other"), entity_type="Shot")

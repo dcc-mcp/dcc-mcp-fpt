@@ -9,13 +9,13 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(**params):
     """List all ShotGrid entity types from schema."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        entity_types = server.client.get_entity_types()
+        entity_types = get_request_client(server, params).get_entity_types()
         return skill_success(
             f"Found {len(entity_types)} entity types",
             entity_types=entity_types,

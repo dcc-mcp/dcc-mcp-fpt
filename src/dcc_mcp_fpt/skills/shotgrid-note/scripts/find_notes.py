@@ -17,14 +17,14 @@ def main(
 ):
     """Find notes attached to a given entity."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
         filters = [["note_links", "in", {"type": link_entity_type, "id": link_entity_id}]]
-        results = server.client.find(
+        results = get_request_client(server, params).find(
             entity_type="Note",
             filters=filters,
             fields=["id", "subject", "content", "created_at", "user", "note_links"],

@@ -10,13 +10,13 @@ def main(**params):
     """Verify ShotGrid credentials and connectivity."""
     try:
         # Access the server singleton (created by the adapter at startup)
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_connection_info
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        info = server.get_connection_info()
+        info = get_request_connection_info(server, params)
         return skill_success(
             "ShotGrid connection verified"
             if info.get("authenticated")

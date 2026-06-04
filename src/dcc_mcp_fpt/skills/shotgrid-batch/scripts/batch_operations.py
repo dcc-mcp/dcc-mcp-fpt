@@ -9,13 +9,13 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(requests: list, project=None, project_id=None, project_scoped: bool = True, **params):
     """Execute multiple create/update/delete operations in one call."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        results = server.client.batch(
+        results = get_request_client(server, params).batch(
             requests=requests,
             project=project,
             project_id=project_id,

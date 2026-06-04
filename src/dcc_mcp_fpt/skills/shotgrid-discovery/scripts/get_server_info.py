@@ -9,18 +9,19 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(**params):
     """Retrieve ShotGrid server information."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_connection_info
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        info = server.get_connection_info()
+        info = get_request_connection_info(server, params)
         return skill_success(
             f"ShotGrid server at {info.get('url', 'unknown')}",
             server_version=info.get("server_version", "unknown"),
             api_version=info.get("server_version", "unknown"),
             gateway=info.get("gateway", {}),
+            request_context=info.get("request_context", {}),
         )
     except ImportError as e:
         return skill_error(f"dcc-mcp-fpt not installed: {e}", "IMPORT_ERROR")
