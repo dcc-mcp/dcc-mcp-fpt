@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.1...v0.1.2) (2026-06-04)
+
+
+### Features
+
+* support request-scoped ShotGrid profiles ([6597471](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/659747130ec83e040e188daefcca63c3bd114b07))
+
 ## [0.1.1](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.0...v0.1.1) (2026-06-04)
 
 
