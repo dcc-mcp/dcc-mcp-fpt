@@ -50,6 +50,8 @@ def main(**params):
             context["docker"] = _docker_config(adapter_port, gateway_port, custom_skill_paths)
         if target in {"all", "env", "skills"}:
             context["skills"] = _skill_path_config(custom_skill_paths)
+        if target in {"all", "context"}:
+            context["request_context"] = _request_context_config(project)
 
         return skill_success("Generated dcc-mcp-fpt setup configuration", **context)
     except Exception as exc:
@@ -154,6 +156,38 @@ def _skill_path_config(custom_skill_paths: List[str]) -> Dict[str, Any]:
         "path_separator": os.pathsep,
         "example": f"DCC_MCP_FPT_SKILL_PATHS={env_value}",
         "rule": "Point the env var at a skill package directory or a parent directory containing skill package folders.",
+    }
+
+
+def _request_context_config(project: str) -> Dict[str, Any]:
+    profile = os.environ.get("SHOTGRID_CREDENTIAL_PROFILE", "sg-read-zombie")
+    requester = os.environ.get("DCC_MCP_REQUESTER_ID", "<member-or-agent-id>")
+    context = {
+        "_meta": {
+            "agent_context": {
+                "requester_id": requester,
+                "requester_type": "human",
+            },
+            "credential_profile": profile,
+            "permission_hint": "read",
+            "project_scope": project or "my_project_code",
+        }
+    }
+    return {
+        "mcp_meta": context,
+        "profile_env": "DCC_MCP_FPT_CREDENTIAL_PROFILES",
+        "profile_file_env": "DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE",
+        "profile_example": {
+            profile: {
+                "url": "<shotgrid-url>",
+                "script_name": "<script-user-name>",
+                "script_key": "<stored-outside-chat>",
+                "permission_level": "read",
+                "read_only": True,
+                "project": project or "my_project_code",
+            }
+        },
+        "rule": "For HTTP MCP/Gateway calls, pass identity through _meta.agent_context, pass credential controls as top-level _meta fields, and keep secrets in a profile store, not tool arguments.",
     }
 
 

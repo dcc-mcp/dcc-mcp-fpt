@@ -19,7 +19,7 @@ def main(
 ):
     """Search entities with optional text filter."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
@@ -30,7 +30,7 @@ def main(
         if text:
             combined_filters.append(["name", "contains", text])
 
-        results = server.client.find(
+        results = get_request_client(server, params).find(
             entity_type=entity_type,
             filters=combined_filters,
             fields=fields,

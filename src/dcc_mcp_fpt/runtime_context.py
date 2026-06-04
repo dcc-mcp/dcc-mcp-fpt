@@ -18,6 +18,23 @@ def get_current_server() -> Optional[Any]:
     return _current_server
 
 
+def get_request_client(server: Any, params: Optional[dict] = None) -> Any:
+    """Return a request-scoped client when the server supports it."""
+    if hasattr(server, "client_for_request"):
+        return server.client_for_request(params or {})
+    return server.client
+
+
+def get_request_connection_info(server: Any, params: Optional[dict] = None) -> dict:
+    """Return request-scoped connection diagnostics when supported."""
+    if hasattr(server, "get_connection_info"):
+        try:
+            return server.get_connection_info(params or {})
+        except TypeError:
+            return server.get_connection_info()
+    raise AttributeError("Server does not expose get_connection_info")
+
+
 def clear_current_server(server: Optional[Any] = None) -> None:
     """Clear the active server context.
 

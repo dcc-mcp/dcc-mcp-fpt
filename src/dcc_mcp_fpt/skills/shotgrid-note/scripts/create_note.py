@@ -18,7 +18,7 @@ def main(
 ):
     """Create a note and optionally link to entities."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
@@ -33,7 +33,7 @@ def main(
         if link_entity_type and link_entity_ids:
             data["note_links"] = [{"type": link_entity_type, "id": eid} for eid in link_entity_ids]
 
-        result = server.client.create(
+        result = get_request_client(server, params).create(
             entity_type="Note",
             data=data,
             project=project,

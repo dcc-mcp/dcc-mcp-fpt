@@ -24,6 +24,7 @@ from dcc_mcp_fpt import __version__
 from dcc_mcp_fpt.access import ShotGridAccessPolicy
 from dcc_mcp_fpt.client import ShotGridClient
 from dcc_mcp_fpt.connection_pool import ConnectionPool
+from dcc_mcp_fpt.request_context import extract_agent_context, resolve_request_context
 from dcc_mcp_fpt.runtime_context import clear_current_server, set_current_server
 from dcc_mcp_fpt.schema_cache import SchemaCache
 from dcc_mcp_fpt.utils import get_shotgrid_env
@@ -181,6 +182,28 @@ class ShotGridMcpServer(DccServerBase):
             )
         return self._client
 
+    def client_for_request(self, params: Optional[Dict[str, Any]] = None) -> ShotGridClient:
+        """Return the effective ShotGrid client for one tool request."""
+        if not params or extract_agent_context(params).is_empty:
+            return self.client
+
+        resolved = resolve_request_context(
+            params,
+            base_policy=self._access_policy,
+            default_project=self._default_project,
+            default_project_id=self._default_project_id,
+        )
+        return ShotGridClient(
+            resolved.credentials.url,
+            resolved.credentials.script_name,
+            resolved.credentials.api_key,
+            pool=self._connection_pool,
+            schema_cache=self._schema_cache,
+            access_policy=resolved.access_policy,
+            default_project=resolved.default_project,
+            default_project_id=resolved.default_project_id,
+        )
+
     # --- Version ---
 
     def _version_string(self) -> str:
@@ -316,25 +339,45 @@ class ShotGridMcpServer(DccServerBase):
 
     # --- Diagnostics ---
 
-    def get_connection_info(self) -> Dict[str, Any]:
+    def get_connection_info(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Get ShotGrid connection diagnostics."""
         try:
-            info = self.client.get_connection_info().model_dump()
+            client = self.client_for_request(params)
+            info = client.get_connection_info().model_dump()
         except Exception as e:
-            return {
+            info = {
                 "url": self._sg_url,
                 "script_name": self._sg_script_name,
                 "authenticated": False,
                 "error": str(e),
                 "gateway": self.get_gateway_info(),
             }
+            try:
+                resolved = resolve_request_context(
+                    params or {},
+                    base_policy=self._access_policy,
+                    default_project=self._default_project,
+                    default_project_id=self._default_project_id,
+                )
+                info["request_context"] = resolved.diagnostics()
+            except Exception:
+                pass
+            return info
         info["gateway"] = self.get_gateway_info()
+        if params and not extract_agent_context(params).is_empty:
+            resolved = resolve_request_context(
+                params,
+                base_policy=self._access_policy,
+                default_project=self._default_project,
+                default_project_id=self._default_project_id,
+            )
+            info["request_context"] = resolved.diagnostics()
         return info
 
-    def get_schema_summary(self) -> Dict[str, Any]:
+    def get_schema_summary(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Get a summary of available ShotGrid entity types."""
         try:
-            entity_types = self.client.get_entity_types()
+            entity_types = self.client_for_request(params).get_entity_types()
             return {
                 "entity_types": entity_types,
                 "count": len(entity_types),

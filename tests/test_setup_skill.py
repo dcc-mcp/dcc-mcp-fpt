@@ -32,6 +32,22 @@ def test_generate_agent_config_uses_gateway_port_param(monkeypatch):
     assert context["endpoints"]["gateway_mcp_url"] == "http://127.0.0.1:9777/mcp"
 
 
+def test_generate_agent_config_includes_request_context(monkeypatch):
+    """Generated setup documents request-scoped profile metadata."""
+    monkeypatch.setenv("SHOTGRID_CREDENTIAL_PROFILE", "sg-read-zombie")
+    module = _load_script("generate_agent_config")
+
+    result = module.main(project="demo_project", target="context")
+
+    assert result["success"] is True
+    context = result["context"]["request_context"]
+    meta = context["mcp_meta"]["_meta"]
+    assert meta["credential_profile"] == "sg-read-zombie"
+    assert meta["project_scope"] == "demo_project"
+    assert "requester_id" in meta["agent_context"]
+    assert context["profile_file_env"] == "DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE"
+
+
 def test_validate_runtime_config_reports_missing_credentials(monkeypatch):
     """Runtime validation reports missing credentials when requested."""
     for key in ("SHOTGRID_URL", "SHOTGRID_SCRIPT_NAME", "SHOTGRID_SCRIPT_KEY"):
@@ -44,3 +60,18 @@ def test_validate_runtime_config_reports_missing_credentials(monkeypatch):
     context = result["context"]
     assert context["ready"] is False
     assert context["missing"] == ["SHOTGRID_URL", "SHOTGRID_SCRIPT_NAME", "SHOTGRID_SCRIPT_KEY"]
+
+
+def test_validate_runtime_config_reports_profile_support(monkeypatch):
+    """Runtime validation shows whether profile-based credentials are configured."""
+    monkeypatch.setenv("DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE", "C:/secure/fpt-profiles.json")
+    module = _load_script("validate_runtime_config")
+
+    result = module.main(require_credentials=False)
+
+    assert result["success"] is True
+    context = result["context"]
+    assert context["shotgrid"]["credential_profiles_configured"] is True
+    assert context["request_context"]["meta_key"] == "_meta"
+    assert context["request_context"]["identity_key"] == "_meta.agent_context"
+    assert context["request_context"]["credential_profile_key"] == "_meta.credential_profile"

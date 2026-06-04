@@ -263,6 +263,53 @@ Use `--gateway-port 0` or `just serve-standalone` for local standalone testing.
 The `shotgrid-discovery__get_server_info` tool includes a `gateway` diagnostics
 object so agents and CI can confirm whether this instance joined the gateway.
 
+### Request-Scoped Credentials
+
+HTTP MCP clients do not inject `mcp.json.env` into an already-running Gateway.
+For shared Gateway deployments, keep ShotGrid secrets in adapter-side profiles
+and pass request context through MCP `_meta`. With core PIP-520, caller identity
+lives under `_meta.agent_context`, while credential and policy controls are
+bounded top-level `_meta` fields:
+
+```json
+{
+  "_meta": {
+    "agent_context": {
+      "requester_id": "hallong",
+      "requester_type": "human"
+    },
+    "credential_profile": "sg-read-zombie",
+    "permission_hint": "read",
+    "project_scope": "my_project_code"
+  }
+}
+```
+
+Legacy clients that still send `credential_profile`, `permission_hint`, or
+`project_scope` inside `_meta.agent_context` remain supported as a fallback, but
+new agents should use the PIP-520 top-level `_meta` shape above.
+
+Profiles can be supplied as JSON in `DCC_MCP_FPT_CREDENTIAL_PROFILES` or from a
+JSON file via `DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE`:
+
+```json
+{
+  "sg-read-zombie": {
+    "url": "https://mysite.shotgrid.autodesk.com",
+    "script_name": "sg_read_bot",
+    "script_key": "<secret stored outside chat>",
+    "permission_level": "read",
+    "read_only": true,
+    "project": "my_project_code"
+  }
+}
+```
+
+`permission_hint` can only reduce the effective policy. It is merged with the
+env/profile policy by minimum permission, so an agent cannot turn a read profile
+into write/admin. Inline credentials are rejected unless
+`DCC_MCP_ALLOW_INLINE_CREDENTIALS=1` is set for local development.
+
 ### Agent Setup Skill
 
 `shotgrid-setup` is eager-loaded so agents can bootstrap configuration without

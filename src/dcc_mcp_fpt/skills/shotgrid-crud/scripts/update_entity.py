@@ -11,13 +11,13 @@ def main(
 ):
     """Update an existing entity."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        result = server.client.update(
+        result = get_request_client(server, params).update(
             entity_type=entity_type,
             entity_id=entity_id,
             data=data,

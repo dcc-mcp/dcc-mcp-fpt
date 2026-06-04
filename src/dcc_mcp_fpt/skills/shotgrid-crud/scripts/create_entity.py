@@ -9,13 +9,13 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(entity_type: str, data: dict, project=None, project_id=None, project_scoped: bool = True, **params):
     """Create a new entity with the given field values."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        result = server.client.create(
+        result = get_request_client(server, params).create(
             entity_type=entity_type,
             data=data,
             project=project,

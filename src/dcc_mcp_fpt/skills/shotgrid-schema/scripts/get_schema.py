@@ -9,13 +9,13 @@ from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill
 def main(**params):
     """Retrieve the full ShotGrid schema."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
             return skill_error("No ShotGrid server instance available", "NO_SERVER")
 
-        schema = server.client.get_schema()
+        schema = get_request_client(server, params).get_schema()
         entity_count = len(schema) if isinstance(schema, dict) else 0
         return skill_success(
             f"Schema loaded: {entity_count} entity types",

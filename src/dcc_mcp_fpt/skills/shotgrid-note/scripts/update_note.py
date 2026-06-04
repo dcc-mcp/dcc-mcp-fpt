@@ -17,7 +17,7 @@ def main(
 ):
     """Update a note's subject or content."""
     try:
-        from dcc_mcp_fpt.runtime_context import get_current_server
+        from dcc_mcp_fpt.runtime_context import get_current_server, get_request_client
 
         server = get_current_server()
         if server is None:
@@ -32,7 +32,7 @@ def main(
         if not data:
             return skill_error("No subject or content provided for update", "INVALID_PARAMS")
 
-        result = server.client.update(
+        result = get_request_client(server, params).update(
             entity_type="Note",
             entity_id=note_id,
             data=data,

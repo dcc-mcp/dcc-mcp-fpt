@@ -254,6 +254,51 @@ just serve-gateway
 `shotgrid-discovery__get_server_info` 工具会返回 `gateway` 诊断对象，方便 agent
 和 CI 确认当前实例是否已经加入网关。
 
+### 请求级凭证
+
+HTTP MCP 客户端不会把 `mcp.json.env` 注入到已经运行的 Gateway 进程。共享
+Gateway 部署时，ShotGrid secret 应放在适配器侧 profile 里，请求人身份通过 MCP
+`_meta` 传递。core PIP-520 的约定是：调用者身份放在 `_meta.agent_context`，
+凭证和策略控制字段放在 `_meta` 顶层：
+
+```json
+{
+  "_meta": {
+    "agent_context": {
+      "requester_id": "hallong",
+      "requester_type": "human"
+    },
+    "credential_profile": "sg-read-zombie",
+    "permission_hint": "read",
+    "project_scope": "my_project_code"
+  }
+}
+```
+
+旧客户端如果仍把 `credential_profile`、`permission_hint`、`project_scope` 放在
+`_meta.agent_context` 里，FPT 仍会作为兼容 fallback 读取；新 agent 应使用上面的
+PIP-520 顶层 `_meta` 形态。
+
+Profile 可通过 `DCC_MCP_FPT_CREDENTIAL_PROFILES` JSON 环境变量提供，也可以通过
+`DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE` 指向 JSON 文件：
+
+```json
+{
+  "sg-read-zombie": {
+    "url": "https://mysite.shotgrid.autodesk.com",
+    "script_name": "sg_read_bot",
+    "script_key": "<secret stored outside chat>",
+    "permission_level": "read",
+    "read_only": true,
+    "project": "my_project_code"
+  }
+}
+```
+
+`permission_hint` 只能降权，最终策略会与 env/profile 策略取最小权限，所以 agent
+不能把只读 profile 提升成 write/admin。inline 凭证默认拒绝，只有本地开发显式设置
+`DCC_MCP_ALLOW_INLINE_CREDENTIALS=1` 时才允许。
+
 ### Agent 自动配置 Skill
 
 `shotgrid-setup` 会在启动时加载，agent 可以直接用它生成本地配置，不需要猜项目
