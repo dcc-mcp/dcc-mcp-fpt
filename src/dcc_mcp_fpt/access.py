@@ -105,8 +105,7 @@ class ShotGridAccessPolicy:
         if self.project_levels and other.project_levels:
             shared = set(self.project_levels).intersection(other.project_levels)
             project_levels = {
-                key: min(self.project_levels[key], other.project_levels[key], key=_LEVEL_RANK.get)
-                for key in shared
+                key: min(self.project_levels[key], other.project_levels[key], key=_LEVEL_RANK.get) for key in shared
             }
         elif self.project_levels:
             project_levels = dict(self.project_levels)

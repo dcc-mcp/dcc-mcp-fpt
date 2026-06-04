@@ -215,8 +215,7 @@ def _resolve_credentials(
     if inline:
         if not _env_truthy(os.environ.get(INLINE_CREDENTIALS_ENV)):
             raise ValueError(
-                "Inline ShotGrid credentials are disabled. "
-                f"Set {INLINE_CREDENTIALS_ENV}=1 only for local development."
+                f"Inline ShotGrid credentials are disabled. Set {INLINE_CREDENTIALS_ENV}=1 only for local development."
             )
         return inline
 
