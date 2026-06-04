@@ -36,8 +36,8 @@ jobs:
       SHOTGRID_URL: ${{ secrets.SHOTGRID_URL }}
       SHOTGRID_SCRIPT_NAME: ${{ secrets.SHOTGRID_SCRIPT_NAME }}
       SHOTGRID_SCRIPT_KEY: ${{ secrets.SHOTGRID_SCRIPT_KEY }}
-      SHOTGRID_PROJECT: ${{ inputs.project }}
-      SHOTGRID_PROJECT_ID: ${{ inputs.project_id }}
+      SHOTGRID_PROJECT: ${{ inputs.project || secrets.SHOTGRID_PROJECT }}
+      SHOTGRID_PROJECT_ID: ${{ inputs.project_id || secrets.SHOTGRID_PROJECT_ID }}
       SHOTGRID_SMOKE_ENTITY_TYPE: ${{ inputs.entity_type }}
       SHOTGRID_LIVE_CRUD_CONFIRM: ${{ inputs.confirm_crud && '1' || '0' }}
       DCC_MCP_ALLOW_AMBIENT_PYTHON: "1"
