@@ -32,6 +32,7 @@ RUN mkdir -p /skills && pip install --no-cache-dir .
 EXPOSE 8765
 EXPOSE 9765
 VOLUME ["/skills"]
+STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8765/health')"

@@ -145,6 +145,7 @@ mcpcall list --config ./mcpcall.json --server shotgrid --json
 |-------|-------|
 | `shotgrid-discovery` | `check_connection`, `list_entity_types`, `get_server_info` |
 | `shotgrid-setup` | `generate_agent_config`, `validate_runtime_config` |
+| `shotgrid-users` | `whoami` |
 | `shotgrid-schema` | `get_schema`, `get_field_schema`, `list_entity_types` |
 
 ### Scene (loaded on demand)
@@ -367,20 +368,64 @@ docker run --rm \
   dcc-mcp-fpt
 ```
 
-Minimal compose:
+Docker Compose (includes health check and graceful shutdown):
 
-```yaml
-services:
-  dcc-mcp-fpt:
-    image: dcc-mcp-fpt
-    ports:
-      - "8765:8765"
-      - "9765:9765"
-    env_file:
-      - .env
-    volumes:
-      - /studio/fpt-skills:/skills:ro
+```bash
+docker compose -f docker-compose.yml up -d
 ```
+
+For per-user credential profiles, use the profiles overlay:
+
+```bash
+# 1. Create fpt-credential-profiles.json (see Per-User Access below)
+# 2. Launch with profiles compose file
+docker compose -f docker-compose.yml -f docker-compose.profiles.yml up -d
+```
+
+### Health Check
+
+The adapter exposes a `/health` endpoint for container probes and platform monitoring:
+
+```bash
+curl http://localhost:8765/health
+# {"status": "ok", "version": "dcc-mcp-fpt/0.1.2", "sg_configured": true}
+```
+
+- `sg_configured: true` means ShotGrid credentials are available.
+- No secrets are exposed — the field is a boolean derived from the presence of `SHOTGRID_URL`.
+- The endpoint works even when `dcc-mcp-core` is not installed.
+
+### Agent Platform Deployment
+
+The adapter is designed to run on OpenClaw, Harness, and other MCP-compatible
+agent platforms. See `deployment/OPENCLAW.md` and `deployment/HARNESS.md` for
+platform-specific configuration guides.
+
+Key platform features:
+- **Graceful shutdown**: Handles `SIGTERM` for clean orchestrated stops.
+- **Health endpoint**: `/health` for Kubernetes liveness/readiness probes.
+- **Stateless + profiles**: Deploy one instance; select credentials per-request via `_meta`.
+- **Gateway registration**: Optionally joins the dcc-mcp gateway for unified routing.
+
+### Per-User Access with whoami
+
+The `shotgrid-users` skill provides a `whoami` tool that reports the effective
+ShotGrid identity without exposing secrets. Use it to confirm which credential
+profile and permission level is active:
+
+```bash
+mcpcall call --url http://127.0.0.1:8765/mcp shotgrid-users__whoami
+```
+
+With a request-scoped profile:
+
+```bash
+mcpcall call --url http://127.0.0.1:8765/mcp shotgrid-users__whoami \
+  --meta '{"credential_profile":"sg-read-zombie","project_scope":"demo"}'
+```
+
+The response includes `script_name`, `url`, `permission_level`, `credential_profile`,
+and `credential_source` — but never the `api_key`.
 
 ## Development
 
@@ -431,6 +476,8 @@ The smoke creates a temporary entity, updates it, and retires it on cleanup.
   PyPI Trusted Publishing, and attaches the dist files to the GitHub Release.
 - `Live ShotGrid Smoke` is manual-only and uses GitHub Secrets; it defaults to
   dry-run behavior unless CRUD confirmation is enabled.
+- E2E tests cover all 8 skill packages, server lifecycle, health endpoint,
+  credential profile file loading, and permission policy resolution.
 
 ## Requirements
 

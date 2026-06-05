@@ -303,6 +303,7 @@ class ShotGridMcpServer(DccServerBase):
                 skills=(
                     "shotgrid-discovery",
                     "shotgrid-setup",
+                    "shotgrid-users",
                     "shotgrid-crud",
                     "shotgrid-search",
                 ),
