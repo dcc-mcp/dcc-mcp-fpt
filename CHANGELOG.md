@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.2...v0.1.3) (2026-06-05)
+
+
+### Features
+
+* OpenClaw/Harness deploy support, per-user SG access, E2E tests ([108f841](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/108f8412615ef73191c2692919b9fd43afeaf0ff))
+
 ## [0.1.2](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.1...v0.1.2) (2026-06-04)
 
 
