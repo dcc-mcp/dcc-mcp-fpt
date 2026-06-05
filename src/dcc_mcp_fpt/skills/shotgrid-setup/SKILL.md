@@ -5,7 +5,7 @@ description: >-
   custom skill injection configuration for dcc-mcp-fpt. Use when an agent needs
   to help a user bootstrap or audit a local/container deployment.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:

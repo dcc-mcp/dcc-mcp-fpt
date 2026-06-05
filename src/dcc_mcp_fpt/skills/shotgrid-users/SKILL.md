@@ -5,7 +5,7 @@ description: >-
   and active profile without exposing secrets. Use when an agent needs to know
   whose ShotGrid account is in use.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:

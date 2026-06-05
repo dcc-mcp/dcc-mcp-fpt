@@ -6,7 +6,7 @@ description: >-
   new records, update fields, or delete/retire entities. Not for batch
   operations or schema queries.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:

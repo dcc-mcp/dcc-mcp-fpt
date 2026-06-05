@@ -5,7 +5,7 @@ description: >-
   server info. Use when an AI agent needs to understand available ShotGrid data
   before querying specific entities. Not for CRUD operations or schema details.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:
