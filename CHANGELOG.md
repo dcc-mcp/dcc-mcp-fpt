@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.3...v0.1.4) (2026-06-05)
+
+
+### Bug Fixes
+
+* publish core compatibility baseline ([cc2249a](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/cc2249ac60ebd8c6706f5733bbcfbe035dee8337))
+
 ## [0.1.3](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.2...v0.1.3) (2026-06-05)
 
 
