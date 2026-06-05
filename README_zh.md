@@ -374,7 +374,7 @@ just live-crud-smoke
 ## 依赖
 
 - Python 3.8+
-- [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.17.54
+- [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.0
 - [shotgun_api3](https://github.com/shotgunsoftware/python-api) >= 3.4.0
 
 ## 许可证

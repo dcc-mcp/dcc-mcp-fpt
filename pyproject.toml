@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dcc-mcp-fpt"
-version = "0.1.1"
+version = "0.2.0"
 description = "A ShotGrid (Flow Production Tracking) adapter for the DCC-MCP ecosystem, bridging AI assistants to ShotGrid data through typed MCP tools."
 authors = [
     { name = "Long Hao", email = "hal.long@outlook.com" },
@@ -39,7 +39,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "dcc-mcp-core>=0.17.54,<1.0.0",
+    "dcc-mcp-core>=0.18.0,<1.0.0",
     "pydantic>=2.0",
     "shotgun_api3>=3.4.0",
 ]

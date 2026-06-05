@@ -6,11 +6,11 @@ description: >-
   exist on an entity, their types, constraints, and valid values before
   creating or updating data. Not for entity CRUD — use shotgrid-crud.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:
-    dcc: shotgrid
+    dcc: fpt
     version: "0.1.0"
     layer: domain
     stage: bootstrap

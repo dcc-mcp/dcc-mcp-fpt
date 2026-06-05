@@ -6,11 +6,11 @@ description: >-
   new records, update fields, or delete/retire entities. Not for batch
   operations or schema queries.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.17+"
+compatibility: "Python 3.8+; dcc-mcp-core 0.18+"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:
-    dcc: shotgrid
+    dcc: fpt
     version: "0.1.0"
     layer: domain
     stage: scene

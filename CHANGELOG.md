@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.1...v0.2.0) (2026-06-05)
+
+### Features
+
+* align with dcc-mcp-core v0.18.0 release train
+* bump core dependency to `>=0.18.0,<1.0.0`
+* align skill metadata `dcc: fpt` with gateway `dcc_type=fpt`
+
 ## [0.1.1](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.0...v0.1.1) (2026-06-04)
 
 
