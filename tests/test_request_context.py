@@ -8,7 +8,7 @@ import pytest
 
 from dcc_mcp_fpt.access import PermissionLevel, ShotGridAccessPolicy
 from dcc_mcp_fpt.exceptions import ShotGridPermissionError
-from dcc_mcp_fpt.request_context import extract_agent_context, resolve_request_context
+from dcc_mcp_fpt.request_context import extract_agent_context, load_credential_profiles, resolve_request_context
 from dcc_mcp_fpt.server import ShotGridMcpServer
 
 
@@ -189,3 +189,91 @@ def test_server_client_for_request_uses_profile(monkeypatch):
     assert info["url"] == "https://profile.shotgrid.autodesk.com"
     assert info["script_name"] == "writer"
     assert client._access_policy.default_level == PermissionLevel.WRITE
+
+
+# --- File-based profile loading tests ---
+
+
+def test_load_credential_profiles_from_file(monkeypatch, tmp_path):
+    """Profile resolution reads from a JSON file via DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE."""
+    profiles_file = tmp_path / "profiles.json"
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "sg-file-user": {
+                    "url": "https://file.shotgrid.autodesk.com",
+                    "script_name": "file_user",
+                    "script_key": "file_secret",
+                    "permission_level": "read",
+                }
+            }
+        )
+    )
+    monkeypatch.setenv("DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE", str(profiles_file))
+    monkeypatch.delenv("DCC_MCP_FPT_CREDENTIAL_PROFILES", raising=False)
+    monkeypatch.delenv("SHOTGRID_CREDENTIAL_PROFILES", raising=False)
+
+    resolved = resolve_request_context(
+        {"_meta": {"credential_profile": "sg-file-user"}},
+    )
+
+    assert resolved.credentials.source == "credential_profile"
+    assert resolved.credentials.script_name == "file_user"
+    assert resolved.credentials.url == "https://file.shotgrid.autodesk.com"
+
+
+def test_load_credential_profiles_env_takes_precedence_over_file(monkeypatch, tmp_path):
+    """DCC_MCP_FPT_CREDENTIAL_PROFILES env var takes precedence over FILE variant."""
+    profiles_file = tmp_path / "profiles.json"
+    profiles_file.write_text(
+        json.dumps(
+            {
+                "sg-file-user": {
+                    "url": "https://file.shotgrid.autodesk.com",
+                    "script_name": "file_user",
+                    "script_key": "file_secret",
+                }
+            }
+        )
+    )
+    monkeypatch.setenv("DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE", str(profiles_file))
+    monkeypatch.setenv(
+        "DCC_MCP_FPT_CREDENTIAL_PROFILES",
+        json.dumps(
+            {
+                "sg-env-user": {
+                    "url": "https://env.shotgrid.autodesk.com",
+                    "script_name": "env_user",
+                    "script_key": "env_secret",
+                }
+            }
+        ),
+    )
+
+    resolved = resolve_request_context(
+        {"_meta": {"credential_profile": "sg-env-user"}},
+    )
+
+    assert resolved.credentials.source == "credential_profile"
+    assert resolved.credentials.script_name == "env_user"
+
+
+def test_load_credential_profiles_file_not_found(monkeypatch):
+    """Missing profile file raises descriptive ValueError."""
+    monkeypatch.setenv("DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE", "/nonexistent/profiles.json")
+    monkeypatch.delenv("DCC_MCP_FPT_CREDENTIAL_PROFILES", raising=False)
+    monkeypatch.delenv("SHOTGRID_CREDENTIAL_PROFILES", raising=False)
+
+    with pytest.raises(ValueError, match="not found"):
+        load_credential_profiles()
+
+
+def test_load_credential_profiles_empty_when_not_set(monkeypatch):
+    """Returns empty dict when no profile source is configured."""
+    monkeypatch.delenv("DCC_MCP_FPT_CREDENTIAL_PROFILES", raising=False)
+    monkeypatch.delenv("SHOTGRID_CREDENTIAL_PROFILES", raising=False)
+    monkeypatch.delenv("DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE", raising=False)
+    monkeypatch.delenv("SHOTGRID_CREDENTIAL_PROFILES_FILE", raising=False)
+
+    profiles = load_credential_profiles()
+    assert profiles == {}

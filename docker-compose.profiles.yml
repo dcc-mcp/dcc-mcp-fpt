@@ -1,0 +1,39 @@
+version: "3.9"
+
+# Multi-profile deployment for per-user ShotGrid credential profiles.
+# Use this compose file when the adapter must serve multiple users/teams
+# with different ShotGrid credentials selected at request time via MCP _meta.
+#
+# Usage:
+#   1. Create fpt-credential-profiles.json:
+#      {
+#        "sg-read-zombie": {
+#          "url": "https://mysite.shotgrid.autodesk.com",
+#          "script_name": "sg_read_bot",
+#          "script_key": "<secret>",
+#          "permission_level": "read",
+#          "read_only": true,
+#          "project": "demo_project"
+#        },
+#        "sg-write-artist": {
+#          "url": "https://mysite.shotgrid.autodesk.com",
+#          "script_name": "sg_write_bot",
+#          "script_key": "<secret>",
+#          "permission_level": "write"
+#        }
+#      }
+#   2. docker compose -f docker-compose.yml -f docker-compose.profiles.yml up -d
+
+services:
+  dcc-mcp-fpt:
+    extends:
+      file: docker-compose.yml
+      service: dcc-mcp-fpt
+    environment:
+      - DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE=/run/secrets/sg_profiles
+    secrets:
+      - sg_profiles
+
+secrets:
+  sg_profiles:
+    file: ./fpt-credential-profiles.json

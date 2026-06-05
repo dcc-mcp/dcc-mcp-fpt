@@ -8,8 +8,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import signal
 import sys
-import time
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -204,15 +205,25 @@ def _run_http(args: argparse.Namespace) -> None:
     if args.gateway_port and args.gateway_port > 0:
         print(f"Gateway endpoint: http://127.0.0.1:{args.gateway_port}/mcp")
 
+    shutdown_event = threading.Event()
+
+    def _handle_shutdown(signum, frame):
+        signame = signal.Signals(signum).name if hasattr(signal, "Signals") else f"signal {signum}"
+        logger.info("Received %s, initiating graceful shutdown...", signame)
+        shutdown_event.set()
+
+    for sig in _graceful_signals():
+        try:
+            signal.signal(sig, _handle_shutdown)
+        except (ValueError, AttributeError):
+            pass  # Signal not available on this platform
+
     try:
-        # Keep running until interrupted
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
+        while not shutdown_event.is_set():
+            shutdown_event.wait(timeout=1.0)
     finally:
         server.shutdown()
-        logger.info("Server shut down.")
+        logger.info("Server shut down gracefully.")
 
 
 def _run_stdio(args: argparse.Namespace) -> None:
@@ -235,10 +246,31 @@ def _run_stdio(args: argparse.Namespace) -> None:
     )
     # In stdio mode, the MCP protocol runs over stdin/stdout
     # The server handles the protocol internally
+    shutdown_event = threading.Event()
+
+    def _handle_shutdown(signum, frame):
+        signame = signal.Signals(signum).name if hasattr(signal, "Signals") else f"signal {signum}"
+        logger.info("Received %s, initiating graceful shutdown...", signame)
+        shutdown_event.set()
+
+    for sig in _graceful_signals():
+        try:
+            signal.signal(sig, _handle_shutdown)
+        except (ValueError, AttributeError):
+            pass
+
     try:
         server.start()
+        # In stdio mode, start() typically blocks on stdin/stdout I/O.
+        # The shutdown_event allows SIGTERM to trigger a clean exit path
+        # when the platform sends signals during orchestrated shutdown.
+        while not shutdown_event.is_set():
+            shutdown_event.wait(timeout=1.0)
     except KeyboardInterrupt:
+        pass
+    finally:
         server.shutdown()
+        logger.info("Server shut down gracefully.")
 
 
 def _run_asgi(args: argparse.Namespace) -> None:
@@ -266,6 +298,20 @@ def _normalize_gateway_port(args: argparse.Namespace) -> Optional[int]:
     if getattr(args, "no_gateway", False):
         return 0
     return args.gateway_port
+
+
+def _graceful_signals():
+    """Return the platform-appropriate graceful-shutdown signals.
+
+    On Unix: SIGTERM (orchestrator stop) and SIGINT (Ctrl+C).
+    On Windows: SIGINT and SIGBREAK when available, otherwise just SIGINT.
+    """
+    sigs = []
+    for name in ("SIGTERM", "SIGINT", "SIGBREAK"):
+        sig = getattr(signal, name, None)
+        if sig is not None:
+            sigs.append(sig)
+    return sigs
 
 
 def _apply_skill_paths(skill_paths: list[str]) -> None:

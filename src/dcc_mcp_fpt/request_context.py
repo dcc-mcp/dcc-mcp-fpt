@@ -178,7 +178,14 @@ def load_credential_profiles() -> Dict[str, Dict[str, Any]]:
         for name in PROFILE_FILE_ENV_NAMES:
             path = os.environ.get(name, "").strip()
             if path:
-                raw = Path(path).read_text(encoding="utf-8")
+                try:
+                    raw = Path(path).read_text(encoding="utf-8")
+                except FileNotFoundError as exc:
+                    raise ValueError(f"ShotGrid credential profiles file not found: {path}") from exc
+                except PermissionError as exc:
+                    raise ValueError(f"ShotGrid credential profiles file not readable: {path}") from exc
+                except OSError as exc:
+                    raise ValueError(f"Failed to read ShotGrid credential profiles file {path}: {exc}") from exc
                 break
 
     if not raw:
