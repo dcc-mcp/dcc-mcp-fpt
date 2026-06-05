@@ -6,7 +6,7 @@ description: >-
   by name, status, dates, or relationships beyond simple field equality.
   Not for single-entity CRUD — use shotgrid-crud for that.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
+compatibility: "Python 3.8+; dcc-mcp-core >=0.18.2,<1.0.0"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:
