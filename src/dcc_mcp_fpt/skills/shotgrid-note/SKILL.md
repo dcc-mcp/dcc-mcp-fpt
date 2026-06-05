@@ -5,7 +5,7 @@ description: >-
   Use when an AI agent needs to annotate shots, assets, tasks, or versions
   with notes. Not for entity CRUD — use shotgrid-crud for that.
 license: MIT
-compatibility: "Python 3.8+; dcc-mcp-core 0.18.2+"
+compatibility: "Python 3.8+; dcc-mcp-core >=0.18.2,<1.0.0"
 allowed-tools: Bash Read Write Edit
 metadata:
   dcc-mcp:
