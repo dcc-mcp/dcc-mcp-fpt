@@ -482,7 +482,7 @@ The smoke creates a temporary entity, updates it, and retires it on cleanup.
 ## Requirements
 
 - Python 3.8+
-- [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.17.54
+- [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.2
 - [shotgun_api3](https://github.com/shotgunsoftware/python-api) >= 3.4.0
 
 ## License
