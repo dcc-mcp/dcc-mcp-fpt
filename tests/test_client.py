@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from dcc_mcp_fpt.client import ShotGridClient
@@ -99,8 +101,6 @@ class TestShotGridClient:
 
     def test_context_manager(self, mock_shotgrid):
         """Client works as context manager."""
-        from unittest.mock import patch
-
         with patch.object(ShotGridClient, "connect", return_value=None):
             with ShotGridClient(
                 url="https://test.shotgrid.autodesk.com",
