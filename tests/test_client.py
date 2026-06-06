@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from dcc_mcp_fpt.client import ShotGridClient
@@ -99,14 +101,15 @@ class TestShotGridClient:
 
     def test_context_manager(self, mock_shotgrid):
         """Client works as context manager."""
-        with ShotGridClient(
-            url="https://test.shotgrid.autodesk.com",
-            script_name="test_script",
-            api_key="test_key",
-        ) as client:
-            client._sg = mock_shotgrid
-            info = client.get_connection_info()
-            assert info.authenticated is True
+        with patch.object(ShotGridClient, "connect", return_value=None):
+            with ShotGridClient(
+                url="https://test.shotgrid.autodesk.com",
+                script_name="test_script",
+                api_key="test_key",
+            ) as client:
+                client._sg = mock_shotgrid
+                info = client.get_connection_info()
+                assert info.authenticated is True
 
     def test_close(self, shotgrid_client):
         """close disconnects properly."""
