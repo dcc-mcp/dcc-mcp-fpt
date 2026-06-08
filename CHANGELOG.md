@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.5...v0.1.6) (2026-06-08)
+
+
+### Bug Fixes
+
+* **release:** add force_publish workflow_dispatch input for recovery ([482c82e](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/482c82eb5ef721e672aabf33c5c4a4693fdfb5ff))
+
 ## [0.1.5](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.4...v0.1.5) (2026-06-08)
 
 
