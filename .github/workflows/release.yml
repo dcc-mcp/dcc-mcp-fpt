@@ -4,6 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_publish:
+        description: "Force publish even if release-please skips (for recovery)"
+        type: boolean
+        required: false
+        default: false
+      tag_name:
+        description: "Tag name for force_publish mode (e.g. v0.1.5)"
+        type: string
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -32,7 +42,9 @@ jobs:
 
   build:
     needs: [release-please]
-    if: needs.release-please.outputs.release_created == 'true'
+    if: >
+      needs.release-please.outputs.release_created == 'true' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -69,7 +81,9 @@ jobs:
 
   publish:
     needs: [release-please, build]
-    if: needs.release-please.outputs.release_created == 'true'
+    if: >
+      needs.release-please.outputs.release_created == 'true' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -78,6 +92,8 @@ jobs:
       id-token: write
 
     steps:
+      - uses: actions/checkout@v6
+
       - name: Download dist artifacts
         uses: actions/download-artifact@v8
         with:
@@ -92,12 +108,16 @@ jobs:
 
   attach-release-assets:
     needs: [release-please, publish]
-    if: needs.release-please.outputs.release_created == 'true'
+    if: >
+      needs.release-please.outputs.release_created == 'true' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      - uses: actions/checkout@v6
+
       - name: Download dist artifacts
         uses: actions/download-artifact@v8
         with:
@@ -107,5 +127,5 @@ jobs:
       - name: Attach dist artifacts to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          tag_name: ${{ needs.release-please.outputs.tag_name || github.event.inputs.tag_name }}
           files: dist/*
