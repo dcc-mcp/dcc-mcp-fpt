@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.5](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.4...v0.1.5) (2026-06-08)
+
+
+### Bug Fixes
+
+* apply ruff format to test_agent_instruction_files.py ([d9cc70b](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/d9cc70bdc34307913c554399169a98de46ee08e9))
+* **ci:** isolate workflow_dispatch from push concurrency in release workflow ([#12](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/12)) ([e5c8712](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/e5c871295c133a97226dd4a1619eb8ecb62ddd3f))
+* sort imports in test_agent_instruction_files.py ([60efc09](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/60efc0927469c01819a7aeaac694d4a9bdcd4694))
+
 ## [0.1.4](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.3...v0.1.4) (2026-06-05)
 
 
