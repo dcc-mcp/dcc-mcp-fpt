@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.6...v0.1.7) (2026-07-16)
+
+
+### Bug Fixes
+
+* use OS-assigned MCP instance ports ([#22](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/22)) ([9bce0d4](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/9bce0d42e2b71c4c5459e85af432b982741fff75))
+
 ## [0.1.6](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.5...v0.1.6) (2026-06-08)
 
 
