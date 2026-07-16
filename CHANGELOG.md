@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.7...v0.1.8) (2026-07-16)
+
+
+### Bug Fixes
+
+* expose the dynamic default port ([#24](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/24)) ([7a64752](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/7a647526ef3e76b46cf1be165b8c1a71fb87b727))
+
 ## [0.1.7](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.6...v0.1.7) (2026-07-16)
 
 
