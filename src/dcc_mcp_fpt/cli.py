@@ -55,8 +55,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--port",
         type=int,
-        default=8765,
-        help="Port for HTTP server (default: 8765)",
+        default=None,
+        help="Instance port (default: DCC_MCP_FPT_PORT or operating-system assigned)",
     )
 
     # Gateway options
@@ -163,7 +163,7 @@ def main(argv: Optional[list] = None) -> None:
     setup_logging(args.verbose)
 
     logger.info(
-        "Starting dcc-mcp-fpt (mode=%s, port=%d, gateway_port=%s)",
+        "Starting dcc-mcp-fpt (mode=%s, port=%s, gateway_port=%s)",
         args.mode,
         args.port,
         args.gateway_port,
@@ -199,7 +199,7 @@ def _run_http(args: argparse.Namespace) -> None:
         enable_gateway_failover=False if args.disable_gateway_failover else None,
         skills_dir=Path(args.skills_dir) if args.skills_dir else None,
     )
-    url = server.mcp_url() if hasattr(server, "mcp_url") else f"http://{args.host}:{args.port}/mcp"
+    url = server.mcp_url() if hasattr(server, "mcp_url") else "unavailable"
     logger.info("ShotGrid MCP server listening at %s", url)
     print(f"MCP endpoint: {url}")
     if args.gateway_port and args.gateway_port > 0:
@@ -278,9 +278,10 @@ def _run_asgi(args: argparse.Namespace) -> None:
     logger.info(
         "ASGI mode: run with 'uvicorn dcc_mcp_fpt.asgi:app --host %s --port %d'",
         args.host,
-        args.port,
+        args.port if args.port is not None else 0,
     )
-    print(f"Run with: uvicorn dcc_mcp_fpt.asgi:app --host {args.host} --port {args.port}")
+    port = args.port if args.port is not None else 0
+    print(f"Run with: uvicorn dcc_mcp_fpt.asgi:app --host {args.host} --port {port}")
 
 
 def _env_int(name: str, default: Optional[int] = None) -> Optional[int]:

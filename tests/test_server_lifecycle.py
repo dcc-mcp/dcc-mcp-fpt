@@ -9,9 +9,17 @@ from dcc_mcp_fpt.server import ShotGridMcpServer
 class TestServerLifecycle:
     """Tests for ShotGridMcpServer instantiation and lifecycle."""
 
-    def test_server_instantiation_defaults(self):
+    def test_server_instantiation_defaults(self, monkeypatch):
         """Server can be instantiated without dcc-mcp-core."""
+        monkeypatch.delenv("DCC_MCP_FPT_PORT", raising=False)
+        server = ShotGridMcpServer(gateway_port=0)
+        assert server._port == 0
+
+    def test_explicit_zero_port_overrides_environment(self, monkeypatch):
+        monkeypatch.setenv("DCC_MCP_FPT_PORT", "18765")
+
         server = ShotGridMcpServer(port=0, gateway_port=0)
+
         assert server._port == 0
 
     def test_server_connection_info_without_connect(self):

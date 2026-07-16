@@ -46,8 +46,6 @@ service:
                 - name: dcc-mcp-fpt
                   image: <registry>/dcc-mcp-fpt:latest
                   ports:
-                    - containerPort: 8765
-                      name: http
                     - containerPort: 9765
                       name: gateway
                   env:
@@ -58,13 +56,13 @@ service:
                   livenessProbe:
                     httpGet:
                       path: /health
-                      port: 8765
+                      port: 9765
                     initialDelaySeconds: 10
                     periodSeconds: 30
                   readinessProbe:
                     httpGet:
                       path: /health
-                      port: 8765
+                      port: 9765
                     initialDelaySeconds: 5
                     periodSeconds: 10
                   volumeMounts:

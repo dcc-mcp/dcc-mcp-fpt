@@ -39,7 +39,7 @@ class ShotGridMcpServer(DccServerBase):
     CRUD operations, batch processing, notes, playlists, and search.
 
     Usage:
-        server = ShotGridMcpServer(port=8765)
+        server = ShotGridMcpServer()
         handle = server.start()
         print(f"MCP endpoint: {handle.mcp_url()}")
         # ... use it ...
@@ -48,7 +48,7 @@ class ShotGridMcpServer(DccServerBase):
 
     def __init__(
         self,
-        port: int = 8765,
+        port: Optional[int] = None,
         *,
         shotgrid_url: Optional[str] = None,
         shotgrid_script_name: Optional[str] = None,
@@ -152,7 +152,7 @@ class ShotGridMcpServer(DccServerBase):
 
         if DccServerBase is not object:
             super().__init__(options=options)
-        self._port = port
+        self._port = options.port if options is not None else port
 
         # Configure minimal mode for progressive skill loading
         self._setup_minimal_mode()
@@ -389,7 +389,7 @@ class ShotGridMcpServer(DccServerBase):
 
 
 def start_server(
-    port: int = 8765,
+    port: Optional[int] = None,
     *,
     shotgrid_url: Optional[str] = None,
     shotgrid_script_name: Optional[str] = None,

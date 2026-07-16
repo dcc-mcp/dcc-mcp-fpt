@@ -45,15 +45,15 @@ ci: lint format-check lint-skills test build
 
 # Run the server locally in HTTP mode.
 serve:
-    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765
+    python -m dcc_mcp_fpt http --host 0.0.0.0
 
 # Run the server locally and join the dcc-mcp gateway.
 serve-gateway:
-    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765
+    python -m dcc_mcp_fpt http --host 0.0.0.0
 
 # Run the server locally with gateway registration disabled.
 serve-standalone:
-    python -m dcc_mcp_fpt http --host 0.0.0.0 --port 8765 --no-gateway
+    python -m dcc_mcp_fpt http --host 0.0.0.0 --no-gateway
 
 # Run the published package entry via uvx.
 serve-uvx:
@@ -77,7 +77,7 @@ docker-build:
 
 # Run Docker container with ShotGrid env from the current shell or .env.
 docker-run:
-    docker run --rm -p 8765:8765 -p 9765:9765 -e SHOTGRID_URL -e SHOTGRID_SCRIPT_NAME -e SHOTGRID_SCRIPT_KEY -e SHOTGRID_PROJECT -e SHOTGRID_PROJECT_ID -e SHOTGRID_PERMISSION_LEVEL -e SHOTGRID_PROJECT_PERMISSIONS -e SHOTGRID_READ_ONLY -e DCC_MCP_GATEWAY_PORT -e DCC_MCP_REGISTRY_DIR -e DCC_MCP_FPT_GATEWAY_SCENE -e DCC_MCP_FPT_GATEWAY_DISPLAY_NAME -e DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER -e DCC_MCP_FPT_SKILL_PATHS -e DCC_MCP_SKILL_PATHS dcc-mcp-fpt
+    docker run --rm -p 9765:9765 -e SHOTGRID_URL -e SHOTGRID_SCRIPT_NAME -e SHOTGRID_SCRIPT_KEY -e SHOTGRID_PROJECT -e SHOTGRID_PROJECT_ID -e SHOTGRID_PERMISSION_LEVEL -e SHOTGRID_PROJECT_PERMISSIONS -e SHOTGRID_READ_ONLY -e DCC_MCP_GATEWAY_PORT -e DCC_MCP_REGISTRY_DIR -e DCC_MCP_FPT_GATEWAY_SCENE -e DCC_MCP_FPT_GATEWAY_DISPLAY_NAME -e DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER -e DCC_MCP_FPT_SKILL_PATHS -e DCC_MCP_SKILL_PATHS dcc-mcp-fpt
 
 # Clean build and test artifacts.
 clean:

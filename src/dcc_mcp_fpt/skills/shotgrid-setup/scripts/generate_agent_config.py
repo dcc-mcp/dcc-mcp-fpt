@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill_success
 
-DEFAULT_ADAPTER_PORT = 8765
+DEFAULT_ADAPTER_PORT = 0
 DEFAULT_GATEWAY_PORT = 9765
 
 
@@ -24,9 +24,11 @@ def main(**params):
         custom_skill_paths = _string_list(params.get("custom_skill_paths"))
         include_secret_values = bool(params.get("include_secret_values", False))
 
-        adapter_url = f"http://{host}:{adapter_port}/mcp"
+        adapter_url = f"http://{host}:{adapter_port}/mcp" if adapter_port > 0 else None
         gateway_url = f"http://{host}:{gateway_port}/mcp" if gateway_port > 0 else None
         primary_url = gateway_url or adapter_url
+        if primary_url is None:
+            raise ValueError("adapter_port must be explicit when gateway_port is disabled")
 
         env = _build_env(project, permission_level, gateway_port, custom_skill_paths, include_secret_values)
         start_command = "uvx dcc-mcp-fpt" if gateway_port > 0 else "uvx dcc-mcp-fpt --no-gateway"
@@ -115,9 +117,18 @@ def _mcpcall_commands(primary_url: str) -> Dict[str, str]:
 
 
 def _docker_config(adapter_port: int, gateway_port: int, custom_skill_paths: List[str]) -> Dict[str, Any]:
-    ports = [f"-p {adapter_port}:8765"]
+    ports = []
+    env_flags = []
+    environment = {}
+    compose_ports = []
+    if adapter_port > 0:
+        ports.append(f"-p {adapter_port}:{adapter_port}")
+        env_flags.extend(["-e", f"DCC_MCP_FPT_PORT={adapter_port}"])
+        environment["DCC_MCP_FPT_PORT"] = str(adapter_port)
+        compose_ports.append(f"{adapter_port}:{adapter_port}")
     if gateway_port > 0:
         ports.append(f"-p {gateway_port}:9765")
+        compose_ports.append(f"{gateway_port}:9765")
 
     volumes = []
     if custom_skill_paths:
@@ -128,6 +139,7 @@ def _docker_config(adapter_port: int, gateway_port: int, custom_skill_paths: Lis
             [
                 "docker run --rm",
                 *ports,
+                *env_flags,
                 "--env-file .env",
                 *volumes,
                 "dcc-mcp-fpt",
@@ -137,9 +149,8 @@ def _docker_config(adapter_port: int, gateway_port: int, custom_skill_paths: Lis
             "services": {
                 "dcc-mcp-fpt": {
                     "image": "dcc-mcp-fpt",
-                    "ports": [f"{adapter_port}:8765", f"{gateway_port}:9765"]
-                    if gateway_port > 0
-                    else [f"{adapter_port}:8765"],
+                    "ports": compose_ports,
+                    "environment": environment,
                     "env_file": [".env"],
                     "volumes": [f"{custom_skill_paths[0]}:/skills:ro"] if custom_skill_paths else [],
                 }

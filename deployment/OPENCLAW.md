@@ -15,7 +15,6 @@ platform. This guide covers setup, configuration, and agent integration.
 # Build and run
 docker build -t dcc-mcp-fpt .
 docker run --rm \
-  -p 8765:8765 \
   -p 9765:9765 \
   --env-file .env \
   --stop-signal SIGTERM \
@@ -30,10 +29,10 @@ docker compose -f docker-compose.yml up -d
 
 ### Health Check
 
-The adapter exposes a `/health` endpoint at port 8765:
+The stable gateway exposes a `/health` endpoint at port 9765:
 
 ```bash
-curl http://localhost:8765/health
+curl http://localhost:9765/health
 # {"status": "ok", "version": "dcc-mcp-fpt/0.1.2", "sg_configured": true}
 ```
 
@@ -41,19 +40,14 @@ OpenClaw can use this endpoint for readiness/liveness probes.
 
 ## MCP Endpoint
 
-Once running, the MCP endpoint is available at:
-
-```
-http://<host>:8765/mcp
-```
-
-If the dcc-mcp gateway is enabled, also at:
+Once running, use the stable dcc-mcp gateway endpoint:
 
 ```
 http://<host>:9765/mcp
 ```
 
-Configure OpenClaw to point at either URL.
+The adapter instance itself uses an OS-assigned port and registers its exact
+URL in discovery; OpenClaw does not need to hardcode that transient port.
 
 ## Per-User ShotGrid Access
 
@@ -119,7 +113,7 @@ When an agent tool is invoked via OpenClaw, include `_meta` in the MCP request:
 The `whoami` tool reports which profile and permission level is active:
 
 ```
-mcpcall call --url http://127.0.0.1:8765/mcp shotgrid-users__whoami
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-users__whoami
 ```
 
 ### 4. Profile Resolution Order
