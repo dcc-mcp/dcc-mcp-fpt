@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from types import SimpleNamespace
 
+from dcc_mcp_fpt import DEFAULT_PORT
 from dcc_mcp_fpt import server as server_module
 from dcc_mcp_fpt.cli import _apply_skill_paths, _normalize_gateway_port, build_arg_parser
 from dcc_mcp_fpt.server import ShotGridMcpServer, _resolve_gateway_failover
@@ -106,6 +107,7 @@ def test_cli_defaults_to_local_gateway(monkeypatch):
     args = build_arg_parser().parse_args([])
 
     assert args.mode == "http"
+    assert DEFAULT_PORT == 0
     assert args.port is None
     assert args.gateway_port == 9765
     assert _normalize_gateway_port(args) == 9765

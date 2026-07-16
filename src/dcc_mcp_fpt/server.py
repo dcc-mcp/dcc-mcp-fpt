@@ -31,6 +31,8 @@ from dcc_mcp_fpt.utils import get_shotgrid_env
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_PORT = 0
+
 
 class ShotGridMcpServer(DccServerBase):
     """MCP server for ShotGrid (Flow Production Tracking).
