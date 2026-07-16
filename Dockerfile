@@ -15,7 +15,6 @@ ENV SHOTGRID_SCRIPT_KEY=""
 ENV SHOTGRID_PROJECT=""
 ENV SHOTGRID_PROJECT_ID=""
 ENV SHOTGRID_PERMISSION_LEVEL="read"
-ENV DCC_MCP_SHOTGRID_PORT=8765
 ENV DCC_MCP_GATEWAY_PORT=9765
 ENV DCC_MCP_REGISTRY_DIR=""
 ENV DCC_MCP_FPT_GATEWAY_SCENE=""
@@ -29,13 +28,12 @@ COPY src ./src
 
 RUN mkdir -p /skills && pip install --no-cache-dir .
 
-EXPOSE 8765
 EXPOSE 9765
 VOLUME ["/skills"]
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8765/health')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:9765/health')"
 
 ENTRYPOINT ["dcc-mcp-fpt"]
 CMD ["http", "--host", "0.0.0.0"]

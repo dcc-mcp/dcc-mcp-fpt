@@ -60,8 +60,9 @@ export SHOTGRID_PERMISSION_LEVEL="read"
 uvx dcc-mcp-fpt
 ```
 
-默认会启动适配器端点 `http://127.0.0.1:8765/mcp`，并在
-`http://127.0.0.1:9765/mcp` 启用 dcc-mcp gateway。如果 9765 上已经有健康的
+默认会为适配器实例分配操作系统随机端口，并在
+`http://127.0.0.1:9765/mcp` 启用稳定的本地网关。可使用
+`dcc-mcp-cli list` 查看实例直连地址。如果 9765 上已经有健康的
 gateway，FPT 适配器会注册进去一起工作；如果没有，core 的 gateway 选举路径可以
 在当前本地会话里持有该端口。
 
@@ -337,7 +338,6 @@ skill path 也会在 dcc-mcp-core 启动或 reload 时被读取。
 ```bash
 docker build -t dcc-mcp-fpt .
 docker run --rm \
-  -p 8765:8765 \
   -p 9765:9765 \
   --env-file .env \
   dcc-mcp-fpt
@@ -348,7 +348,6 @@ docker run --rm \
 
 ```bash
 docker run --rm \
-  -p 8765:8765 \
   -p 9765:9765 \
   --env-file .env \
   -v /studio/fpt-skills:/skills:ro \
@@ -362,7 +361,6 @@ services:
   dcc-mcp-fpt:
     image: dcc-mcp-fpt
     ports:
-      - "8765:8765"
       - "9765:9765"
     env_file:
       - .env

@@ -106,6 +106,7 @@ def test_cli_defaults_to_local_gateway(monkeypatch):
     args = build_arg_parser().parse_args([])
 
     assert args.mode == "http"
+    assert args.port is None
     assert args.gateway_port == 9765
     assert _normalize_gateway_port(args) == 9765
 

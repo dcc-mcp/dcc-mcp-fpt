@@ -60,8 +60,9 @@ The shortest local path is:
 uvx dcc-mcp-fpt
 ```
 
-By default this starts the adapter at `http://127.0.0.1:8765/mcp` and enables
-the dcc-mcp gateway on `http://127.0.0.1:9765/mcp`. If a healthy gateway is
+By default the adapter binds an OS-assigned instance port and enables
+the stable local gateway at `http://127.0.0.1:9765/mcp`. Use
+`dcc-mcp-cli list` to inspect the direct endpoint. If a healthy gateway is
 already running on that port, this FPT adapter registers into it; otherwise the
 core gateway election path can own the gateway port for the local session.
 
@@ -350,7 +351,6 @@ Build and run locally:
 ```bash
 docker build -t dcc-mcp-fpt .
 docker run --rm \
-  -p 8765:8765 \
   -p 9765:9765 \
   --env-file .env \
   dcc-mcp-fpt
@@ -361,7 +361,6 @@ Inject custom skills by mounting a directory to `/skills`; the image sets
 
 ```bash
 docker run --rm \
-  -p 8765:8765 \
   -p 9765:9765 \
   --env-file .env \
   -v /studio/fpt-skills:/skills:ro \
@@ -384,10 +383,10 @@ docker compose -f docker-compose.yml -f docker-compose.profiles.yml up -d
 
 ### Health Check
 
-The adapter exposes a `/health` endpoint for container probes and platform monitoring:
+The stable gateway exposes `/health` for container probes and platform monitoring:
 
 ```bash
-curl http://localhost:8765/health
+curl http://localhost:9765/health
 # {"status": "ok", "version": "dcc-mcp-fpt/0.1.2", "sg_configured": true}
 ```
 
@@ -414,13 +413,13 @@ ShotGrid identity without exposing secrets. Use it to confirm which credential
 profile and permission level is active:
 
 ```bash
-mcpcall call --url http://127.0.0.1:8765/mcp shotgrid-users__whoami
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-users__whoami
 ```
 
 With a request-scoped profile:
 
 ```bash
-mcpcall call --url http://127.0.0.1:8765/mcp shotgrid-users__whoami \
+mcpcall call --url http://127.0.0.1:9765/mcp shotgrid-users__whoami \
   --meta '{"credential_profile":"sg-read-zombie","project_scope":"demo"}'
 ```
 

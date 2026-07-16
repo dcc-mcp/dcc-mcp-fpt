@@ -16,8 +16,8 @@ tools:
           description: "Host used in local MCP URLs."
         adapter_port:
           type: integer
-          default: 8765
-          description: "Adapter HTTP port."
+          default: 0
+          description: "Optional fixed adapter HTTP port. Use 0 for OS assignment."
         gateway_port:
           type: integer
           default: 9765

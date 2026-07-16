@@ -5,16 +5,13 @@ services:
     image: dcc-mcp-fpt:latest
     build: .
     ports:
-      - "${DCC_MCP_SHOTGRID_PORT:-8765}:8765"
       - "${DCC_MCP_GATEWAY_PORT:-9765}:9765"
     env_file:
       - .env
-    environment:
-      - DCC_MCP_SHOTGRID_PORT=8765
     volumes:
       - skills:/skills:ro
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8765/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9765/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
