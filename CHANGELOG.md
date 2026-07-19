@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.8...v0.1.9) (2026-07-19)
+
+
+### Documentation
+
+* align agent workflow and branding ([beca69e](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/beca69e110aa20bc54aa11d6e289ef35128b90e0))
+* document CLI install and updates ([c781c14](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/c781c14af03b2695fd950f90bc217a164d1745c1))
+
 ## [0.1.8](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.7...v0.1.8) (2026-07-16)
 
 
