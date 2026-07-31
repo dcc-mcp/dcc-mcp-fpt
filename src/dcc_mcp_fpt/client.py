@@ -271,15 +271,12 @@ class ShotGridClient:
         cached = self._project_cache.get(cache_key.lower())
         if cached is not None:
             return cached
-        entity = (
-            self.find_one(
-                "Project", [["id", "is", effective_id]], ["id", "name", "tank_name", "code"], project_scoped=False
-            )
-            if effective_id is not None
-            else self._find_project_by_identifier(str(effective_project))
-        )
-        if entity is None:
-            raise ShotGridQueryError(f"ShotGrid Project {cache_key} was not found")
+        if effective_id is not None:
+            project_ref = ProjectRef(id=int(effective_id))
+            self._project_cache[cache_key.lower()] = project_ref
+            return project_ref
+        else:
+            entity = self._find_project_by_identifier(str(effective_project))
         project_ref = ProjectRef(
             id=int(entity["id"]), name=entity.get("name"), code=entity.get("code"), tank_name=entity.get("tank_name")
         )
