@@ -69,7 +69,7 @@ typed, progressively-loaded MCP tools built on [dcc-mcp-core](https://github.com
 | **Progressive Loading** | Bootstrap tools eager-loaded; advanced tools loaded on demand |
 | **Gateway Ready** | Plugs into the dcc-mcp gateway for unified multi-service routing |
 | **Skill-First** | Every tool is a typed skill with `tools.yaml`, schemas, and annotations |
-| **Connection Pooling** | Reuses authenticated sessions for performance |
+| **CLI Transport** | Uses the version-pinned `fpt` CLI for ShotGrid REST/RPC access |
 | **Schema Caching** | Entity field schemas cached with configurable TTL |
 | **Multi-Transport** | stdio, HTTP, and ASGI — works anywhere |
 | **Docker Ready** | Single-command container deployment |
@@ -106,6 +106,11 @@ The shortest local path is:
 ```bash
 uvx dcc-mcp-fpt
 ```
+
+On the first FPT command, the adapter downloads the checksum-verified pinned
+`fpt` release into its per-user cache. No system `PATH` setup is required. To
+use a studio-managed binary instead, set `DCC_MCP_FPT_CLI_PATH` to its full
+path before launch.
 
 By default the adapter binds an OS-assigned instance port and enables
 the stable local gateway at `http://127.0.0.1:9765/mcp`. Use
@@ -234,12 +239,12 @@ AI Agent (Claude, Cursor, Copilot)
 │  └───────────┬─────────────┘  │
 │              │                │
 │  ┌───────────▼─────────────┐  │
-│  │  ConnectionPool          │  │
 │  │  SchemaCache             │  │
+│  │  fpt CLI bridge          │  │
 │  └───────────┬─────────────┘  │
 └──────────────┼────────────────┘
                │
-               │ shotgun_api3 (REST)
+               │ fpt CLI (REST/RPC)
                ▼
      ┌─────────────────┐
      │  ShotGrid API    │
@@ -264,6 +269,8 @@ AI Agent (Claude, Cursor, Copilot)
 | `DCC_MCP_FPT_GATEWAY_SCENE` | No | Gateway context label; defaults to `project:<SHOTGRID_PROJECT>` |
 | `DCC_MCP_FPT_GATEWAY_DISPLAY_NAME` | No | Human-readable label shown in gateway/admin surfaces |
 | `DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER` | No | Set `0` to disable core gateway election/failover |
+| `DCC_MCP_FPT_CLI_PATH` | No | Explicit executable override; otherwise use the pinned local download |
+| `DCC_MCP_FPT_CLI_TIMEOUT` | No | Per-command timeout in seconds (default: `30`) |
 | `DCC_MCP_FPT_SKILL_PATHS` | No | FPT-specific custom skill roots (`;` on Windows, `:` on Unix) |
 | `DCC_MCP_SKILL_PATHS` | No | Global custom skill roots shared by all dcc-mcp adapters |
 | `DCC_MCP_SHOTGRID_MINIMAL` | No | Comma-separated minimal mode skill list |
@@ -529,7 +536,7 @@ The smoke creates a temporary entity, updates it, and retires it on cleanup.
 
 - Python 3.8+
 - [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.2,<1.0.0
-- [shotgun_api3](https://github.com/shotgunsoftware/python-api) >= 3.4.0
+- The pinned [`fpt`](https://github.com/loonghao/fpt-cli) 0.2.25 release is downloaded on first use; set `DCC_MCP_FPT_CLI_PATH` only to override it.
 
 ## License
 

@@ -128,7 +128,7 @@ The `/health` endpoint returns:
 The adapter handles SIGTERM for graceful shutdown. When Harness stops a pod,
 it sends SIGTERM, and the adapter:
 1. Stops accepting new connections
-2. Closes the ShotGrid connection pool
+2. Releases local fpt CLI client state
 3. Shuts down the MCP server
 4. Exits cleanly
 

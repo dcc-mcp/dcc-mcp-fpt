@@ -1,136 +1,67 @@
-"""Tests for ShotGridClient."""
+"""Tests for the fpt CLI-backed ShotGrid client."""
 
 from __future__ import annotations
 
-from unittest.mock import patch
+import json
+import subprocess
 
 import pytest
 
 from dcc_mcp_fpt.client import ShotGridClient
-from dcc_mcp_fpt.exceptions import ShotGridQueryError
-from dcc_mcp_fpt.models import ShotGridConnectionInfo
+from dcc_mcp_fpt.exceptions import ShotGridConnectionError, ShotGridQueryError
 
 
-class TestShotGridClient:
-    """Tests for the ShotGrid API client wrapper."""
-
-    def test_connect(self, shotgrid_client):
-        """Client connects and retrieves server info."""
-        shotgrid_client.connect()
-        info = shotgrid_client.get_connection_info()
-        assert isinstance(info, ShotGridConnectionInfo)
-        assert info.authenticated is True
-        assert info.url == "https://test.shotgrid.autodesk.com"
-
-    def test_get_connection_info_formats_list_version(self, shotgrid_client):
-        """ShotGrid API list versions are normalized for diagnostics."""
-        shotgrid_client._sg.server_info = {"version": [8, 86, 0]}
-
-        info = shotgrid_client.get_connection_info()
-
-        assert info.authenticated is True
-        assert info.server_version == "8.86.0"
-
-    def test_get_connection_info_without_connect(self):
-        """get_connection_info returns not authenticated before connect."""
-        client = ShotGridClient(
-            url="https://test.shotgrid.autodesk.com",
-            script_name="test_script",
-            api_key="test_key",
-        )
-        info = client.get_connection_info()
-        assert info.authenticated is False
-
-    def test_find_entities(self, shotgrid_client):
-        """find returns results."""
-        shotgrid_client._sg.find.return_value = [
-            {"id": 1, "type": "Shot", "code": "SH001"},
-            {"id": 2, "type": "Shot", "code": "SH002"},
-        ]
-        results = shotgrid_client.find("Shot", [])
-        assert len(results) == 2
-        assert results[0]["code"] == "SH001"
-
-    def test_find_entities_empty(self, shotgrid_client):
-        """find returns empty list when no results."""
-        results = shotgrid_client.find("Shot", [["code", "is", "NONEXISTENT"]])
-        assert results == []
-
-    def test_find_one_entity(self, shotgrid_client):
-        """find_one returns single result."""
-        shotgrid_client._sg.find_one.return_value = {"id": 1, "type": "Shot", "code": "SH001"}
-        result = shotgrid_client.find_one("Shot", [["code", "is", "SH001"]])
-        assert result is not None
-        assert result["id"] == 1
-
-    def test_find_one_not_found(self, shotgrid_client):
-        """find_one returns None when not found."""
-        result = shotgrid_client.find_one("Shot", [["code", "is", "NONEXISTENT"]])
-        assert result is None
-
-    def test_create_entity(self, shotgrid_client):
-        """create returns the new entity."""
-        result = shotgrid_client.create("Shot", {"code": "SH001", "project": {"type": "Project", "id": 1}})
-        assert result["id"] == 1
-        assert result["code"] == "SH001"
-
-    def test_update_entity(self, shotgrid_client):
-        """update returns the updated entity."""
-        result = shotgrid_client.update("Shot", 1, {"code": "SH001_MOD"})
-        assert result["id"] == 1
-
-    def test_delete_entity(self, shotgrid_client):
-        """delete returns True."""
-        result = shotgrid_client.delete("Shot", 1)
-        assert result is True
-
-    def test_batch(self, shotgrid_client):
-        """batch executes multiple operations."""
-        shotgrid_client._sg.batch.return_value = [
-            {"id": 1, "type": "Shot"},
-            {"id": 2, "type": "Shot"},
-            True,
-        ]
-        requests = [
-            {"request_type": "create", "entity_type": "Shot", "data": {"code": "SH001"}},
-            {"request_type": "create", "entity_type": "Shot", "data": {"code": "SH002"}},
-            {"request_type": "delete", "entity_type": "Shot", "entity_id": 3},
-        ]
-        results = shotgrid_client.batch(requests)
-        assert len(results) == 3
-
-    def test_context_manager(self, mock_shotgrid):
-        """Client works as context manager."""
-        with patch.object(ShotGridClient, "connect", return_value=None):
-            with ShotGridClient(
-                url="https://test.shotgrid.autodesk.com",
-                script_name="test_script",
-                api_key="test_key",
-            ) as client:
-                client._sg = mock_shotgrid
-                info = client.get_connection_info()
-                assert info.authenticated is True
-
-    def test_close(self, shotgrid_client):
-        """close disconnects properly."""
-        shotgrid_client.close()
-        assert shotgrid_client._sg is None
+def _input(call):
+    args = call
+    return json.loads(args[args.index("--input") + 1])
 
 
-class TestShotGridClientRetry:
-    """Tests for retry behavior."""
+def test_connect_uses_fpt_auth_and_secret_environment(shotgrid_client, fpt_runner):
+    shotgrid_client.connect()
 
-    def test_find_retries_on_failure(self, shotgrid_client):
-        """find retries up to MAX_RETRIES before raising."""
-        shotgrid_client._sg.find.side_effect = Exception("transient error")
-        with pytest.raises(ShotGridQueryError):
-            shotgrid_client.find("Shot", [])
-        # Should have been called MAX_RETRIES times
-        assert shotgrid_client._sg.find.call_count == ShotGridClient.MAX_RETRIES
+    assert fpt_runner.calls == [["fpt", "auth", "test", "--output", "json"]]
+    assert fpt_runner.environment["FPT_SCRIPT_KEY"] == "test_key"
+    assert "test_key" not in fpt_runner.calls[0]
+    assert shotgrid_client.get_connection_info().authenticated is True
 
-    def test_create_retries_on_failure(self, shotgrid_client):
-        """create retries on failure."""
-        shotgrid_client._sg.create.side_effect = Exception("transient error")
-        with pytest.raises(ShotGridQueryError):
-            shotgrid_client.create("Shot", {"code": "SH001"})
-        assert shotgrid_client._sg.create.call_count == ShotGridClient.MAX_RETRIES
+
+def test_find_translates_filters_and_rest_entities(shotgrid_client, fpt_runner):
+    fpt_runner._result = lambda payload: subprocess.CompletedProcess(
+        [], 0, json.dumps({"data": [{"type": "Shot", "id": 1, "attributes": {"code": "SH001"}}]}), ""
+    )
+
+    results = shotgrid_client.find("Shot", [["code", "is", "SH001"]], fields=["code"], limit=10)
+
+    assert results == [{"code": "SH001", "id": 1, "type": "Shot"}]
+    payload = _input(fpt_runner.calls[-1])
+    assert payload["search"]["filters"] == [["code", "is", "SH001"]]
+    assert payload["page"] == {"size": 10, "number": 1}
+
+
+def test_delete_requires_fpt_confirmation(shotgrid_client, fpt_runner):
+    assert shotgrid_client.delete("Project", 1) is True
+
+    assert fpt_runner.calls[-1][:5] == ["fpt", "entity", "delete", "Project", "1"]
+    assert "--yes" in fpt_runner.calls[-1]
+
+
+def test_cli_errors_are_adapter_errors():
+    def runner(*args, **kwargs):
+        return subprocess.CompletedProcess([], 1, '{"error":"denied"}', "")
+
+    client = ShotGridClient("https://test.shotgrid.autodesk.com", "script", "key", cli_path="fpt", runner=runner)
+
+    with pytest.raises(ShotGridQueryError, match="denied"):
+        client.connect()
+
+
+def test_missing_cli_is_reported():
+    def runner(*args, **kwargs):
+        raise FileNotFoundError()
+
+    client = ShotGridClient(
+        "https://test.shotgrid.autodesk.com", "script", "key", cli_path="missing-fpt", runner=runner
+    )
+
+    with pytest.raises(ShotGridConnectionError, match="DCC_MCP_FPT_CLI_PATH"):
+        client.connect()
