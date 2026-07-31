@@ -23,7 +23,6 @@ except ImportError:  # pragma: no cover
 from dcc_mcp_fpt import __version__
 from dcc_mcp_fpt.access import ShotGridAccessPolicy
 from dcc_mcp_fpt.client import ShotGridClient
-from dcc_mcp_fpt.connection_pool import ConnectionPool
 from dcc_mcp_fpt.request_context import extract_agent_context, resolve_request_context
 from dcc_mcp_fpt.runtime_context import clear_current_server, set_current_server
 from dcc_mcp_fpt.schema_cache import SchemaCache
@@ -67,7 +66,6 @@ class ShotGridMcpServer(DccServerBase):
         dcc_version: Optional[str] = None,
         enable_gateway_failover: Optional[bool] = None,
         skills_dir: Optional[Path] = None,
-        connection_pool: Optional[ConnectionPool] = None,
         schema_cache: Optional[SchemaCache] = None,
         **kwargs,
     ):
@@ -90,7 +88,6 @@ class ShotGridMcpServer(DccServerBase):
             dcc_version: Gateway version label; defaults to adapter version.
             enable_gateway_failover: Enable core gateway election/failover.
             skills_dir: Path to bundled skills directory.
-            connection_pool: Optional shared connection pool.
             schema_cache: Optional shared schema cache.
             **kwargs: Additional options passed to DccServerOptions.
         """
@@ -109,7 +106,6 @@ class ShotGridMcpServer(DccServerBase):
                 self._sg_script_key = ""
 
         # Shared resources
-        self._connection_pool = connection_pool or ConnectionPool()
         self._schema_cache = schema_cache or SchemaCache()
         self._access_policy = access_policy or ShotGridAccessPolicy.from_env()
         self._default_project = (
@@ -176,7 +172,6 @@ class ShotGridMcpServer(DccServerBase):
                 self._sg_url,
                 self._sg_script_name,
                 self._sg_script_key,
-                pool=self._connection_pool,
                 schema_cache=self._schema_cache,
                 access_policy=self._access_policy,
                 default_project=self._default_project,
@@ -199,7 +194,6 @@ class ShotGridMcpServer(DccServerBase):
             resolved.credentials.url,
             resolved.credentials.script_name,
             resolved.credentials.api_key,
-            pool=self._connection_pool,
             schema_cache=self._schema_cache,
             access_policy=resolved.access_policy,
             default_project=resolved.default_project,
@@ -334,7 +328,6 @@ class ShotGridMcpServer(DccServerBase):
     def shutdown(self) -> None:
         """Shutdown the server and release resources."""
         clear_current_server(self)
-        self._connection_pool.close_all()
         if self._client is not None:
             self._client.close()
         if DccServerBase is not object and hasattr(super(), "shutdown"):
@@ -407,7 +400,6 @@ def start_server(
     dcc_version: Optional[str] = None,
     enable_gateway_failover: Optional[bool] = None,
     skills_dir: Optional[Path] = None,
-    connection_pool: Optional[ConnectionPool] = None,
     schema_cache: Optional[SchemaCache] = None,
 ) -> Any:
     """Convenience function to create and start a ShotGrid MCP server.
@@ -428,7 +420,6 @@ def start_server(
         dcc_version: Gateway version label.
         enable_gateway_failover: Enable core gateway election/failover.
         skills_dir: Path to skills directory.
-        connection_pool: Optional shared connection pool.
         schema_cache: Optional shared schema cache.
 
     Returns:
@@ -450,7 +441,6 @@ def start_server(
         dcc_version=dcc_version,
         enable_gateway_failover=enable_gateway_failover,
         skills_dir=skills_dir,
-        connection_pool=connection_pool,
         schema_cache=schema_cache,
     )
     return server.start()

@@ -27,7 +27,9 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: >
+      github.ref == 'refs/heads/main' &&
+      !(github.event_name == 'workflow_dispatch' && inputs.force_publish)
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -40,14 +42,38 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  build:
+  validate-release:
     needs: [release-please]
     if: >
-      needs.release-please.outputs.release_created == 'true' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
+      always() && (
+        (needs.release-please.result == 'success' && needs.release-please.outputs.release_created == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.force_publish)
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.target.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate release target
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name || inputs.tag_name }}
+        run: |
+          test -n "$TAG_NAME"
+          VERSION="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          test "$TAG_NAME" = "v$VERSION"
+          gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [validate-release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.validate-release.outputs.tag_name }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v6
@@ -80,10 +106,8 @@ jobs:
           path: dist/
 
   publish:
-    needs: [release-please, build]
-    if: >
-      needs.release-please.outputs.release_created == 'true' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
+    needs: [validate-release, build]
+    if: needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -107,10 +131,8 @@ jobs:
           print-hash: true
 
   attach-release-assets:
-    needs: [release-please, publish]
-    if: >
-      needs.release-please.outputs.release_created == 'true' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.force_publish == 'true')
+    needs: [validate-release, publish]
+    if: needs.publish.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -127,5 +149,5 @@ jobs:
       - name: Attach dist artifacts to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.release-please.outputs.tag_name || github.event.inputs.tag_name }}
+          tag_name: ${{ needs.validate-release.outputs.tag_name }}
           files: dist/*

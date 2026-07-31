@@ -22,7 +22,7 @@ ShotGrid 数据。
 | **渐进式加载** | 启动时加载核心工具；高级工具按需加载 |
 | **网关就绪** | 接入 dcc-mcp 网关实现统一的多服务路由 |
 | **技能优先** | 每个工具都是带有 `tools.yaml`、Schema 和注释的类型化技能 |
-| **连接池** | 复用已验证的会话以提升性能 |
+| **CLI 传输** | 使用固定版本的 `fpt` CLI 访问 ShotGrid REST/RPC |
 | **Schema 缓存** | 实体字段 Schema 缓存，TTL 可配置 |
 | **多传输模式** | stdio、HTTP 和 ASGI — 可在任何环境运行 |
 | **Docker 支持** | 单命令容器部署 |
@@ -59,6 +59,10 @@ export SHOTGRID_PERMISSION_LEVEL="read"
 ```bash
 uvx dcc-mcp-fpt
 ```
+
+首次执行 FPT 命令时，适配器会下载并校验固定版本的 `fpt` 到当前用户缓存，
+不需要配置系统 `PATH`。如需使用工作室统一管理的二进制文件，请在启动前设置
+其完整路径到 `DCC_MCP_FPT_CLI_PATH`。
 
 默认会为适配器实例分配操作系统随机端口，并在
 `http://127.0.0.1:9765/mcp` 启用稳定的本地网关。可使用
@@ -178,12 +182,12 @@ AI 助手 (Claude, Cursor, Copilot)
 │  └───────────┬─────────────┘  │
 │              │                │
 │  ┌───────────▼─────────────┐  │
-│  │  ConnectionPool          │  │
 │  │  SchemaCache             │  │
+│  │  fpt CLI bridge          │  │
 │  └───────────┬─────────────┘  │
 └──────────────┼────────────────┘
                │
-               │ shotgun_api3 (REST)
+               │ fpt CLI (REST/RPC)
                ▼
      ┌─────────────────┐
      │  ShotGrid API    │
@@ -208,6 +212,8 @@ AI 助手 (Claude, Cursor, Copilot)
 | `DCC_MCP_FPT_GATEWAY_SCENE` | 否 | 网关上下文标签；默认 `project:<SHOTGRID_PROJECT>` |
 | `DCC_MCP_FPT_GATEWAY_DISPLAY_NAME` | 否 | 网关/管理界面展示的可读实例名称 |
 | `DCC_MCP_FPT_ENABLE_GATEWAY_FAILOVER` | 否 | 设置为 `0` 时关闭 core 网关选举/故障转移 |
+| `DCC_MCP_FPT_CLI_PATH` | 否 | 显式指定可执行文件；否则使用固定版本的本地下载 |
+| `DCC_MCP_FPT_CLI_TIMEOUT` | 否 | 单次命令超时秒数（默认 `30`） |
 | `DCC_MCP_FPT_SKILL_PATHS` | 否 | FPT 专用 custom skill 搜索根目录（Windows 用 `;`，Unix 用 `:`） |
 | `DCC_MCP_SKILL_PATHS` | 否 | 所有 dcc-mcp 适配器共享的全局 custom skill 搜索根目录 |
 | `DCC_MCP_SHOTGRID_MINIMAL` | 否 | 逗号分隔的最小模式技能列表 |
@@ -418,7 +424,7 @@ just live-crud-smoke
 
 - Python 3.8+
 - [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.2,<1.0.0
-- [shotgun_api3](https://github.com/shotgunsoftware/python-api) >= 3.4.0
+- 固定的 [`fpt`](https://github.com/loonghao/fpt-cli) 0.2.25 会在首次使用时下载；仅在需要覆盖时设置 `DCC_MCP_FPT_CLI_PATH`。
 
 ## 许可证
 
