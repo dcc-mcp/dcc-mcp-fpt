@@ -25,6 +25,43 @@ def test_connect_uses_fpt_auth_and_secret_environment(shotgrid_client, fpt_runne
     assert shotgrid_client.get_connection_info().authenticated is True
 
 
+def test_user_password_auth_uses_user_credentials_only(fpt_runner):
+    client = ShotGridClient(
+        "https://example.shotgrid.autodesk.com",
+        auth_mode="user_password",
+        username="artist@example.com",
+        password="secret",
+        auth_token="123456",
+        cli_path="fpt",
+        runner=fpt_runner,
+    )
+
+    client.connect()
+
+    assert fpt_runner.environment["FPT_AUTH_MODE"] == "user_password"
+    assert fpt_runner.environment["FPT_USERNAME"] == "artist@example.com"
+    assert fpt_runner.environment["FPT_PASSWORD"] == "secret"
+    assert fpt_runner.environment["FPT_AUTH_TOKEN"] == "123456"
+    assert "FPT_SCRIPT_KEY" not in fpt_runner.environment
+
+
+def test_fpt_profile_auth_uses_only_profile_reference(monkeypatch, fpt_runner):
+    monkeypatch.setenv("FPT_PASSWORD", "inherited-secret")
+    client = ShotGridClient(
+        "https://example.shotgrid.autodesk.com",
+        auth_mode="fpt_profile",
+        fpt_profile="example-user",
+        cli_path="fpt",
+        runner=fpt_runner,
+    )
+
+    client.connect()
+
+    assert fpt_runner.environment["FPT_PROFILE"] == "example-user"
+    assert fpt_runner.environment["FPT_SITE"] == "https://example.shotgrid.autodesk.com"
+    assert "FPT_PASSWORD" not in fpt_runner.environment
+
+
 def test_find_translates_filters_and_rest_entities(shotgrid_client, fpt_runner):
     fpt_runner._result = lambda payload: subprocess.CompletedProcess(
         [], 0, json.dumps({"data": [{"type": "Shot", "id": 1, "attributes": {"code": "SH001"}}]}), ""

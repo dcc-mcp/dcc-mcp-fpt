@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
 from dcc_mcp_fpt.access import PermissionLevel, ShotGridAccessPolicy
-from dcc_mcp_fpt.utils import get_shotgrid_env
 
 PROFILE_ENV_NAMES = (
     "DCC_MCP_FPT_CREDENTIAL_PROFILES",
@@ -66,8 +65,14 @@ class ShotGridCredentials:
     """Resolved ShotGrid credentials for one request."""
 
     url: str
-    script_name: str
-    api_key: str
+    script_name: str = ""
+    api_key: str = ""
+    auth_mode: str = "script"
+    username: str = ""
+    password: str = ""
+    auth_token: str = ""
+    session_token: str = ""
+    fpt_profile: str = ""
     source: str = "env_default"
     credential_profile: Optional[str] = None
 
@@ -77,7 +82,8 @@ class ShotGridCredentials:
             "source": self.source,
             "credential_profile": self.credential_profile,
             "url": self.url,
-            "script_name": self.script_name,
+            "identity": self.script_name or self.username or self.fpt_profile or "session-token",
+            "auth_mode": self.auth_mode,
         }
 
 
@@ -210,10 +216,8 @@ def _resolve_credentials(
     if agent_context.credential_profile:
         if not profile:
             raise ValueError(f"Unknown ShotGrid credential_profile: {agent_context.credential_profile}")
-        return ShotGridCredentials(
-            url=_required_profile_value(profile, "url"),
-            script_name=_required_profile_value(profile, "script_name"),
-            api_key=_required_profile_value(profile, "script_key", "api_key"),
+        return _credentials_from_mapping(
+            profile,
             source="credential_profile",
             credential_profile=agent_context.credential_profile,
         )
@@ -226,8 +230,7 @@ def _resolve_credentials(
             )
         return inline
 
-    url, script_name, api_key = get_shotgrid_env()
-    return ShotGridCredentials(url=url, script_name=script_name, api_key=api_key)
+    return _credentials_from_mapping(os.environ, source="env_default")
 
 
 def _resolve_access_policy(
@@ -283,17 +286,85 @@ def _inline_credentials(profile: Mapping[str, Any]) -> Optional[ShotGridCredenti
     credentials = profile.get("credentials") if isinstance(profile, Mapping) else None
     if not isinstance(credentials, Mapping):
         credentials = profile
-    url = credentials.get("url") or credentials.get("shotgrid_url")
-    script_name = credentials.get("script_name") or credentials.get("shotgrid_script_name")
-    api_key = credentials.get("script_key") or credentials.get("api_key") or credentials.get("shotgrid_script_key")
-    if not (url and script_name and api_key):
+    if not credentials:
         return None
-    return ShotGridCredentials(
-        url=str(url),
-        script_name=str(script_name),
-        api_key=str(api_key),
-        source="inline_credentials",
+    try:
+        return _credentials_from_mapping(credentials, source="inline_credentials")
+    except ValueError:
+        return None
+
+
+def _credentials_from_mapping(
+    values: Mapping[str, Any], *, source: str, credential_profile: Optional[str] = None
+) -> ShotGridCredentials:
+    environment = source == "env_default"
+    url = _required_profile_value(
+        values, *("SHOTGRID_URL",) if environment else ("url", "shotgrid_url", "SHOTGRID_URL")
     )
+    fpt_profile = str(
+        values.get("SHOTGRID_FPT_PROFILE") or (None if environment else values.get("fpt_profile")) or ""
+    ).strip()
+    if fpt_profile:
+        return ShotGridCredentials(
+            url=url,
+            auth_mode="fpt_profile",
+            fpt_profile=fpt_profile,
+            source=source,
+            credential_profile=credential_profile,
+        )
+    auth_mode = str(
+        values.get("SHOTGRID_AUTH_MODE") or (None if environment else values.get("auth_mode")) or "script"
+    ).replace("-", "_")
+    if auth_mode == "script":
+        return ShotGridCredentials(
+            url=url,
+            script_name=_required_profile_value(
+                values,
+                *("SHOTGRID_SCRIPT_NAME",)
+                if environment
+                else ("script_name", "shotgrid_script_name", "SHOTGRID_SCRIPT_NAME"),
+            ),
+            api_key=_required_profile_value(
+                values,
+                *("SHOTGRID_SCRIPT_KEY",)
+                if environment
+                else ("script_key", "api_key", "shotgrid_script_key", "SHOTGRID_SCRIPT_KEY"),
+            ),
+            source=source,
+            credential_profile=credential_profile,
+        )
+    if auth_mode == "user_password":
+        return ShotGridCredentials(
+            url=url,
+            auth_mode=auth_mode,
+            username=_required_profile_value(
+                values,
+                *("SHOTGRID_USERNAME",) if environment else ("username", "shotgrid_username", "SHOTGRID_USERNAME"),
+            ),
+            password=_required_profile_value(
+                values,
+                *("SHOTGRID_PASSWORD",) if environment else ("password", "shotgrid_password", "SHOTGRID_PASSWORD"),
+            ),
+            auth_token=str(
+                values.get("SHOTGRID_AUTH_TOKEN") or (None if environment else values.get("auth_token")) or ""
+            ),
+            source=source,
+            credential_profile=credential_profile,
+        )
+    if auth_mode == "session_token":
+        return ShotGridCredentials(
+            url=url,
+            auth_mode=auth_mode,
+            session_token=_required_profile_value(
+                values,
+                *("SHOTGRID_SESSION_TOKEN",)
+                if environment
+                else ("session_token", "shotgrid_session_token", "SHOTGRID_SESSION_TOKEN"),
+            ),
+            source=source,
+            credential_profile=credential_profile,
+        )
+    raise ValueError("SHOTGRID_AUTH_MODE must be script, user_password, or session_token")
 
 
 def _required_profile_value(profile: Mapping[str, Any], *names: str) -> str:

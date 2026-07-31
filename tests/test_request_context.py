@@ -118,6 +118,51 @@ def test_resolve_request_context_uses_profile_and_caps_policy(monkeypatch):
         resolved.access_policy.require("update")
 
 
+def test_resolve_request_context_uses_user_profile(monkeypatch):
+    monkeypatch.setenv(
+        "DCC_MCP_FPT_CREDENTIAL_PROFILES",
+        json.dumps(
+            {
+                "example-user": {
+                    "url": "https://example.shotgrid.autodesk.com",
+                    "auth_mode": "user_password",
+                    "username": "artist@example.com",
+                    "password": "secret",
+                }
+            }
+        ),
+    )
+
+    resolved = resolve_request_context({"_meta": {"credential_profile": "example-user"}})
+
+    assert resolved.credentials.auth_mode == "user_password"
+    assert resolved.credentials.username == "artist@example.com"
+    assert resolved.credentials.api_key == ""
+    assert "password" not in resolved.diagnostics()["credentials"]
+
+
+def test_resolve_request_context_uses_fpt_profile_without_secrets(monkeypatch):
+    monkeypatch.setenv(
+        "DCC_MCP_FPT_CREDENTIAL_PROFILES",
+        json.dumps(
+            {
+                "example-user": {
+                    "url": "https://example.shotgrid.autodesk.com",
+                    "fpt_profile": "example-user",
+                    "permission_level": "read",
+                }
+            }
+        ),
+    )
+
+    resolved = resolve_request_context({"_meta": {"credential_profile": "example-user"}})
+
+    assert resolved.credentials.auth_mode == "fpt_profile"
+    assert resolved.credentials.fpt_profile == "example-user"
+    assert resolved.credentials.password == ""
+    assert resolved.credentials.session_token == ""
+
+
 def test_resolve_request_context_rejects_unknown_profile(monkeypatch):
     monkeypatch.setenv("DCC_MCP_FPT_CREDENTIAL_PROFILES", "{}")
 
@@ -189,6 +234,20 @@ def test_server_client_for_request_uses_profile(monkeypatch):
     assert info["url"] == "https://profile.shotgrid.autodesk.com"
     assert info["script_name"] == "writer"
     assert client._access_policy.default_level == PermissionLevel.WRITE
+
+
+def test_server_client_uses_user_environment(monkeypatch):
+    monkeypatch.setenv("SHOTGRID_URL", "https://example.shotgrid.autodesk.com")
+    monkeypatch.setenv("SHOTGRID_AUTH_MODE", "user_password")
+    monkeypatch.setenv("SHOTGRID_USERNAME", "artist@example.com")
+    monkeypatch.setenv("SHOTGRID_PASSWORD", "secret")
+    monkeypatch.delenv("SHOTGRID_SCRIPT_NAME", raising=False)
+    monkeypatch.delenv("SHOTGRID_SCRIPT_KEY", raising=False)
+
+    client = ShotGridMcpServer(port=0, gateway_port=0).client
+
+    assert client._auth_mode == "user_password"
+    assert client._username == "artist@example.com"
 
 
 # --- File-based profile loading tests ---

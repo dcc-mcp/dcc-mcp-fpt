@@ -8,7 +8,12 @@ from typing import Any, Dict, List
 
 from dcc_mcp_core.skills_helper import run_main, skill_entry, skill_error, skill_success
 
-REQUIRED_CREDENTIALS = ("SHOTGRID_URL", "SHOTGRID_SCRIPT_NAME", "SHOTGRID_SCRIPT_KEY")
+REQUIRED_CREDENTIALS = {
+    "script": ("SHOTGRID_URL", "SHOTGRID_SCRIPT_NAME", "SHOTGRID_SCRIPT_KEY"),
+    "user_password": ("SHOTGRID_URL", "SHOTGRID_USERNAME", "SHOTGRID_PASSWORD"),
+    "session_token": ("SHOTGRID_URL", "SHOTGRID_SESSION_TOKEN"),
+    "fpt_profile": ("SHOTGRID_URL", "SHOTGRID_FPT_PROFILE"),
+}
 
 
 @skill_entry
@@ -20,8 +25,15 @@ def main(**params):
 
         missing: List[str] = []
         warnings: List[str] = []
-        if require_credentials:
-            missing.extend(name for name in REQUIRED_CREDENTIALS if not os.environ.get(name))
+        auth_mode = (
+            "fpt_profile"
+            if os.environ.get("SHOTGRID_FPT_PROFILE")
+            else os.environ.get("SHOTGRID_AUTH_MODE", "script").replace("-", "_")
+        )
+        if auth_mode not in REQUIRED_CREDENTIALS:
+            missing.append("SHOTGRID_AUTH_MODE (script, user_password, session_token, or fpt_profile)")
+        elif require_credentials:
+            missing.extend(name for name in REQUIRED_CREDENTIALS[auth_mode] if not os.environ.get(name))
 
         project = os.environ.get("SHOTGRID_PROJECT") or os.environ.get("SHOTGRID_DEFAULT_PROJECT")
         project_id = os.environ.get("SHOTGRID_PROJECT_ID")
@@ -56,8 +68,13 @@ def main(**params):
             },
             "shotgrid": {
                 "url_configured": bool(os.environ.get("SHOTGRID_URL")),
+                "auth_mode": auth_mode,
                 "script_name_configured": bool(os.environ.get("SHOTGRID_SCRIPT_NAME")),
                 "script_key_configured": bool(os.environ.get("SHOTGRID_SCRIPT_KEY")),
+                "username_configured": bool(os.environ.get("SHOTGRID_USERNAME")),
+                "password_configured": bool(os.environ.get("SHOTGRID_PASSWORD")),
+                "session_token_configured": bool(os.environ.get("SHOTGRID_SESSION_TOKEN")),
+                "fpt_profile_configured": bool(os.environ.get("SHOTGRID_FPT_PROFILE")),
                 "credential_profiles_configured": profiles_configured,
                 "project": project,
                 "project_id": project_id,

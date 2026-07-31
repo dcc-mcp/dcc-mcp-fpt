@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Tuple
 
 FPT_VERSION = "0.2.25"
-_RELEASE_URL = "https://github.com/loonghao/fpt-cli/releases/download/v{version}"
+_RELEASE_URL = "https://github.com/dcc-mcp/fpt-cli/releases/download/v{version}"
 
 
 def resolve_fpt_cli() -> str:

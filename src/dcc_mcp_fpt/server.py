@@ -23,10 +23,9 @@ except ImportError:  # pragma: no cover
 from dcc_mcp_fpt import __version__
 from dcc_mcp_fpt.access import ShotGridAccessPolicy
 from dcc_mcp_fpt.client import ShotGridClient
-from dcc_mcp_fpt.request_context import extract_agent_context, resolve_request_context
+from dcc_mcp_fpt.request_context import ResolvedRequestContext, extract_agent_context, resolve_request_context
 from dcc_mcp_fpt.runtime_context import clear_current_server, set_current_server
 from dcc_mcp_fpt.schema_cache import SchemaCache
-from dcc_mcp_fpt.utils import get_shotgrid_env
 
 logger = logging.getLogger(__name__)
 
@@ -92,18 +91,9 @@ class ShotGridMcpServer(DccServerBase):
             **kwargs: Additional options passed to DccServerOptions.
         """
         # Resolve ShotGrid credentials
-        if shotgrid_url and shotgrid_script_name and shotgrid_script_key:
-            self._sg_url = shotgrid_url
-            self._sg_script_name = shotgrid_script_name
-            self._sg_script_key = shotgrid_script_key
-        else:
-            try:
-                self._sg_url, self._sg_script_name, self._sg_script_key = get_shotgrid_env()
-            except ValueError:
-                # Allow lazy initialization — tools will validate on first use
-                self._sg_url = ""
-                self._sg_script_name = ""
-                self._sg_script_key = ""
+        self._sg_url = shotgrid_url or os.environ.get("SHOTGRID_URL", "")
+        self._sg_script_name = shotgrid_script_name or os.environ.get("SHOTGRID_SCRIPT_NAME", "")
+        self._sg_script_key = shotgrid_script_key or os.environ.get("SHOTGRID_SCRIPT_KEY", "")
 
         # Shared resources
         self._schema_cache = schema_cache or SchemaCache()
@@ -162,21 +152,24 @@ class ShotGridMcpServer(DccServerBase):
     def client(self) -> ShotGridClient:
         """Get or lazily create the ShotGrid API client."""
         if self._client is None:
-            if not all([self._sg_url, self._sg_script_name, self._sg_script_key]):
-                raise ValueError(
-                    "ShotGrid credentials not configured. "
-                    "Set SHOTGRID_URL, SHOTGRID_SCRIPT_NAME, and SHOTGRID_SCRIPT_KEY "
-                    "environment variables."
+            if self._sg_url and self._sg_script_name and self._sg_script_key:
+                self._client = ShotGridClient(
+                    self._sg_url,
+                    self._sg_script_name,
+                    self._sg_script_key,
+                    schema_cache=self._schema_cache,
+                    access_policy=self._access_policy,
+                    default_project=self._default_project,
+                    default_project_id=self._default_project_id,
                 )
-            self._client = ShotGridClient(
-                self._sg_url,
-                self._sg_script_name,
-                self._sg_script_key,
-                schema_cache=self._schema_cache,
-                access_policy=self._access_policy,
-                default_project=self._default_project,
-                default_project_id=self._default_project_id,
-            )
+            else:
+                self._client = self._client_from_context(
+                    resolve_request_context(
+                        base_policy=self._access_policy,
+                        default_project=self._default_project,
+                        default_project_id=self._default_project_id,
+                    )
+                )
         return self._client
 
     def client_for_request(self, params: Optional[Dict[str, Any]] = None) -> ShotGridClient:
@@ -190,10 +183,19 @@ class ShotGridMcpServer(DccServerBase):
             default_project=self._default_project,
             default_project_id=self._default_project_id,
         )
+        return self._client_from_context(resolved)
+
+    def _client_from_context(self, resolved: ResolvedRequestContext) -> ShotGridClient:
         return ShotGridClient(
             resolved.credentials.url,
             resolved.credentials.script_name,
             resolved.credentials.api_key,
+            auth_mode=resolved.credentials.auth_mode,
+            username=resolved.credentials.username,
+            password=resolved.credentials.password,
+            auth_token=resolved.credentials.auth_token,
+            session_token=resolved.credentials.session_token,
+            fpt_profile=resolved.credentials.fpt_profile,
             schema_cache=self._schema_cache,
             access_policy=resolved.access_policy,
             default_project=resolved.default_project,
