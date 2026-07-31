@@ -259,6 +259,11 @@ AI Agent (Claude, Cursor, Copilot)
 | `SHOTGRID_URL` | Yes | ShotGrid server URL |
 | `SHOTGRID_SCRIPT_NAME` | Yes | Script/API user name |
 | `SHOTGRID_SCRIPT_KEY` | Yes | Script/API user key |
+| `SHOTGRID_AUTH_MODE` | No | `script` (default), `user_password`, or `session_token` |
+| `SHOTGRID_USERNAME` / `SHOTGRID_PASSWORD` | For `user_password` | Local user credentials; never pass through MCP arguments |
+| `SHOTGRID_AUTH_TOKEN` | No | MFA/2FA code for `user_password` |
+| `SHOTGRID_SESSION_TOKEN` | For `session_token` | Existing user session token |
+| `SHOTGRID_FPT_PROFILE` | No | Secure local profile created by `fpt auth login`; takes precedence over raw user credentials |
 | `SHOTGRID_PROJECT` | No | Default project name, code, or tank name for scoped tools |
 | `SHOTGRID_PROJECT_ID` | No | Default project ID; overrides `SHOTGRID_PROJECT` when set |
 | `SHOTGRID_PERMISSION_LEVEL` | No | Fallback permission level: `read`, `write`, or `admin` |
@@ -352,14 +357,37 @@ JSON file via `DCC_MCP_FPT_CREDENTIAL_PROFILES_FILE`:
 {
   "sg-read-zombie": {
     "url": "https://mysite.shotgrid.autodesk.com",
-    "script_name": "sg_read_bot",
-    "script_key": "<secret stored outside chat>",
+    "fpt_profile": "example-user",
     "permission_level": "read",
     "read_only": true,
     "project": "my_project_code"
   }
 }
 ```
+
+### User Authentication
+
+Create a profile in the user's local terminal before starting the adapter.
+`--open-browser` lets the user complete Autodesk/FPT login and any required PAT
+setup; `fpt` keeps the password, PAT, or session token in the system credential store:
+
+```bash
+fpt auth login --profile example-user --site https://example.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile example-user
+
+export SHOTGRID_URL="https://example.shotgrid.autodesk.com"
+export SHOTGRID_FPT_PROFILE="example-user"
+export SHOTGRID_PERMISSION_LEVEL="read"
+uvx dcc-mcp-fpt
+```
+
+`SHOTGRID_FPT_PROFILE` makes dcc-mcp-fpt invoke `fpt` with only the local profile
+reference. No user secret is put in MCP metadata, profile JSON, or logs. ShotGrid
+enforces the user's actual permissions; the adapter policy remains an additional ceiling.
+Begin with `SHOTGRID_PERMISSION_LEVEL=read` and raise it deliberately only after the
+read-only `shotgrid-users__whoami` check. `user_password` and `session_token` remain
+for non-interactive compatibility only.
 
 `permission_hint` can only reduce the effective policy. It is merged with the
 env/profile policy by minimum permission, so an agent cannot turn a read profile
@@ -536,7 +564,7 @@ The smoke creates a temporary entity, updates it, and retires it on cleanup.
 
 - Python 3.8+
 - [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.2,<1.0.0
-- The pinned [`fpt`](https://github.com/loonghao/fpt-cli) 0.2.25 release is downloaded on first use; set `DCC_MCP_FPT_CLI_PATH` only to override it.
+- The pinned [`fpt`](https://github.com/dcc-mcp/fpt-cli) 0.2.25 release is downloaded on first use; set `DCC_MCP_FPT_CLI_PATH` only to override it.
 
 ## License
 

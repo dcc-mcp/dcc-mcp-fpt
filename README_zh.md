@@ -202,6 +202,11 @@ AI 助手 (Claude, Cursor, Copilot)
 | `SHOTGRID_URL` | 是 | ShotGrid 服务器 URL |
 | `SHOTGRID_SCRIPT_NAME` | 是 | Script/API 用户名 |
 | `SHOTGRID_SCRIPT_KEY` | 是 | Script/API 密钥 |
+| `SHOTGRID_AUTH_MODE` | 否 | `script`（默认）、`user_password` 或 `session_token` |
+| `SHOTGRID_USERNAME` / `SHOTGRID_PASSWORD` | `user_password` 时需要 | 本地用户凭据；不能放入 MCP 参数 |
+| `SHOTGRID_AUTH_TOKEN` | 否 | `user_password` 的 MFA/2FA 验证码 |
+| `SHOTGRID_SESSION_TOKEN` | `session_token` 时需要 | 已有用户会话令牌 |
+| `SHOTGRID_FPT_PROFILE` | 否 | 本机 `fpt auth login` 创建的安全用户 profile；优先于其他用户凭据 |
 | `SHOTGRID_PROJECT` | 否 | 默认项目名称、代码或 tank name |
 | `SHOTGRID_PROJECT_ID` | 否 | 默认项目 ID；设置后优先于 `SHOTGRID_PROJECT` |
 | `SHOTGRID_PERMISSION_LEVEL` | 否 | 默认权限级别：`read`、`write` 或 `admin` |
@@ -293,14 +298,33 @@ Profile 可通过 `DCC_MCP_FPT_CREDENTIAL_PROFILES` JSON 环境变量提供，�
 {
   "sg-read-zombie": {
     "url": "https://mysite.shotgrid.autodesk.com",
-    "script_name": "sg_read_bot",
-    "script_key": "<secret stored outside chat>",
+    "fpt_profile": "example-user",
     "permission_level": "read",
     "read_only": true,
     "project": "my_project_code"
   }
 }
 ```
+
+### 用户认证
+
+先在用户工作站的终端创建 FPT profile。`--open-browser` 让用户完成 Autodesk/FPT 登录和所需
+PAT 配置；密码、PAT 或 session token 只由 `fpt` 保存到操作系统凭据库：
+
+```bash
+fpt auth login --profile example-user --site https://example.shotgrid.autodesk.com \
+  --auth-mode user-password --username artist@example.com --open-browser
+fpt user current --profile example-user
+
+export SHOTGRID_FPT_PROFILE="example-user"
+export SHOTGRID_PERMISSION_LEVEL="read"
+uvx dcc-mcp-fpt
+```
+
+`SHOTGRID_FPT_PROFILE` 会让 dcc-mcp-fpt 只将本地 profile 引用交给 `fpt`，不会把用户
+secret 放进 MCP metadata、profile JSON 或日志。ShotGrid 执行用户实际权限；适配器策略仍是
+额外上限。先保持 `SHOTGRID_PERMISSION_LEVEL=read`，通过只读的 `shotgrid-users__whoami`
+确认后再有意提高。`user_password` 与 `session_token` 仅保留给非交互兼容场景。
 
 `permission_hint` 只能降权，最终策略会与 env/profile 策略取最小权限，所以 agent
 不能把只读 profile 提升成 write/admin。inline 凭证默认拒绝，只有本地开发显式设置
@@ -424,7 +448,7 @@ just live-crud-smoke
 
 - Python 3.8+
 - [dcc-mcp-core](https://github.com/dcc-mcp/dcc-mcp-core) >= 0.18.2,<1.0.0
-- 固定的 [`fpt`](https://github.com/loonghao/fpt-cli) 0.2.25 会在首次使用时下载；仅在需要覆盖时设置 `DCC_MCP_FPT_CLI_PATH`。
+- 固定的 [`fpt`](https://github.com/dcc-mcp/fpt-cli) 0.2.25 会在首次使用时下载；仅在需要覆盖时设置 `DCC_MCP_FPT_CLI_PATH`。
 
 ## 许可证
 

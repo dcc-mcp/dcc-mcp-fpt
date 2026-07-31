@@ -38,6 +38,7 @@ _CREDENTIAL_ENV_NAMES = (
     "FPT_AUTH_TOKEN",
     "FPT_SESSION_TOKEN",
     "FPT_API_VERSION",
+    "FPT_PROFILE",
     "SG_SITE",
     "SG_AUTH_MODE",
     "SG_SCRIPT_NAME",
@@ -47,6 +48,7 @@ _CREDENTIAL_ENV_NAMES = (
     "SG_AUTH_TOKEN",
     "SG_SESSION_TOKEN",
     "SG_API_VERSION",
+    "SG_PROFILE",
 )
 
 
@@ -56,9 +58,15 @@ class ShotGridClient:
     def __init__(
         self,
         url: str,
-        script_name: str,
-        api_key: str,
+        script_name: str = "",
+        api_key: str = "",
         *,
+        auth_mode: str = "script",
+        username: str = "",
+        password: str = "",
+        auth_token: str = "",
+        session_token: str = "",
+        fpt_profile: str = "",
         schema_cache: Optional[SchemaCache] = None,
         access_policy: Optional[ShotGridAccessPolicy] = None,
         default_project: Optional[str] = None,
@@ -70,6 +78,12 @@ class ShotGridClient:
         self._url = url.rstrip("/")
         self._script_name = script_name
         self._api_key = api_key
+        self._auth_mode = auth_mode
+        self._username = username
+        self._password = password
+        self._auth_token = auth_token
+        self._session_token = session_token
+        self._fpt_profile = fpt_profile
         self._schema_cache = schema_cache or SchemaCache()
         self._access_policy = access_policy or ShotGridAccessPolicy.from_env()
         self._default_project = (
@@ -97,7 +111,7 @@ class ShotGridClient:
     def get_connection_info(self) -> ShotGridConnectionInfo:
         return ShotGridConnectionInfo(
             url=self._url,
-            script_name=self._script_name,
+            script_name=self._script_name or self._username or self._fpt_profile or "session-token",
             authenticated=self._connected,
         )
 
@@ -333,14 +347,19 @@ class ShotGridClient:
         environment = os.environ.copy()
         for name in _CREDENTIAL_ENV_NAMES:
             environment.pop(name, None)
-        environment.update(
-            {
-                "FPT_SITE": self._url,
-                "FPT_AUTH_MODE": "script",
-                "FPT_SCRIPT_NAME": self._script_name,
-                "FPT_SCRIPT_KEY": self._api_key,
-            }
-        )
+        environment.update({"FPT_SITE": self._url, "FPT_AUTH_MODE": self._auth_mode})
+        if self._auth_mode == "fpt_profile":
+            environment["FPT_PROFILE"] = self._fpt_profile
+        elif self._auth_mode == "script":
+            environment.update({"FPT_SCRIPT_NAME": self._script_name, "FPT_SCRIPT_KEY": self._api_key})
+        elif self._auth_mode == "user_password":
+            environment.update({"FPT_USERNAME": self._username, "FPT_PASSWORD": self._password})
+            if self._auth_token:
+                environment["FPT_AUTH_TOKEN"] = self._auth_token
+        elif self._auth_mode == "session_token":
+            environment["FPT_SESSION_TOKEN"] = self._session_token
+        else:
+            raise ShotGridConnectionError(f"Unsupported ShotGrid auth mode: {self._auth_mode}")
         return environment
 
     def _find_project_by_identifier(self, identifier: str) -> Optional[Dict[str, Any]]:

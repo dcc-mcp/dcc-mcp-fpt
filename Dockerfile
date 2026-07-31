@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 ARG FPT_CLI_VERSION=0.2.25
-ARG FPT_CLI_REPOSITORY=loonghao/fpt-cli
+ARG FPT_CLI_REPOSITORY=dcc-mcp/fpt-cli
 
 LABEL org.opencontainers.image.title="dcc-mcp-fpt"
 LABEL org.opencontainers.image.description="ShotGrid MCP server for the DCC-MCP ecosystem"
