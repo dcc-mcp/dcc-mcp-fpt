@@ -126,6 +126,9 @@ jobs:
           dcc-mcp-fpt --help
           python -m dcc_mcp_fpt --help
 
+      - name: Verify doctor JSON, exit, checksum, and cache contracts
+        run: python -m pytest tests/test_doctor_cli.py tests/test_fpt_cli.py -q
+
       - name: Verify live smoke skips without secrets
         run: python tools/shotgrid_live_crud_smoke.py
 

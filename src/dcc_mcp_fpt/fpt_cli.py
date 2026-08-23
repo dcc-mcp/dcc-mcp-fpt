@@ -13,7 +13,7 @@ import urllib.request
 import zipfile
 from io import BytesIO
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 FPT_VERSION = "0.2.25"
 _RELEASE_URL = "https://github.com/dcc-mcp/fpt-cli/releases/download/v{version}"
@@ -27,10 +27,46 @@ def resolve_fpt_cli() -> str:
 
     archive, executable = _platform_asset()
     destination = _cache_dir() / FPT_VERSION / archive / executable
-    if destination.is_file():
+    if inspect_fpt_cli()["checksum_verified"]:
         return str(destination)
     _install(archive, executable, destination)
     return str(destination)
+
+
+def inspect_fpt_cli() -> Dict[str, Any]:
+    """Describe local binary provenance without downloading or executing it."""
+    override = os.environ.get("DCC_MCP_FPT_CLI_PATH")
+    if override:
+        path = Path(override).expanduser()
+        return {
+            "path": str(path),
+            "provenance": "explicit_override",
+            "path_configured": True,
+            "found": path.is_file(),
+            "checksum_verified": False,
+        }
+
+    try:
+        archive, executable = _platform_asset()
+    except RuntimeError:
+        return {
+            "path": "",
+            "provenance": "pinned_cache",
+            "path_configured": False,
+            "found": False,
+            "checksum_verified": False,
+            "unsupported_platform": True,
+        }
+    destination = _cache_dir() / FPT_VERSION / archive / executable
+    recorded = _read_recorded_checksum(destination)
+    verified = bool(recorded and destination.is_file() and _file_sha256(destination) == recorded)
+    return {
+        "path": str(destination),
+        "provenance": "pinned_cache",
+        "path_configured": False,
+        "found": destination.is_file(),
+        "checksum_verified": verified,
+    }
 
 
 def _platform_asset() -> Tuple[str, str]:
@@ -54,16 +90,28 @@ def _cache_dir() -> Path:
 def _install(archive: str, executable: str, destination: Path) -> None:
     base_url = _RELEASE_URL.format(version=FPT_VERSION)
     payload = _download(f"{base_url}/{archive}")
-    expected = _checksum(_download(f"{base_url}/fpt-checksums.txt").decode("utf-8"), archive)
+    try:
+        checksum_manifest = _download(f"{base_url}/fpt-checksums.txt").decode("utf-8")
+    except UnicodeError as exc:
+        raise RuntimeError("The pinned fpt checksum manifest was not valid UTF-8.") from exc
+    expected = _checksum(checksum_manifest, archive)
     if hashlib.sha256(payload).hexdigest() != expected:
         raise RuntimeError(f"Checksum verification failed for {archive}.")
 
+    executable_payload = _executable_bytes(archive, executable, payload)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=str(destination.parent), delete=False) as output:
-        temporary = Path(output.name)
-        output.write(_executable_bytes(archive, executable, payload))
-    temporary.chmod(temporary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    os.replace(str(temporary), str(destination))
+    temporary = _write_temporary(destination.parent, executable_payload)
+    checksum_temporary = _write_temporary(
+        destination.parent,
+        hashlib.sha256(executable_payload).hexdigest().encode("ascii"),
+    )
+    try:
+        temporary.chmod(temporary.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        os.replace(str(temporary), str(destination))
+        os.replace(str(checksum_temporary), str(_checksum_path(destination)))
+    finally:
+        temporary.unlink(missing_ok=True)
+        checksum_temporary.unlink(missing_ok=True)
 
 
 def _download(url: str) -> bytes:
@@ -81,11 +129,46 @@ def _checksum(contents: str, archive: str) -> str:
 
 def _executable_bytes(archive: str, executable: str, payload: bytes) -> bytes:
     package = BytesIO(payload)
-    if archive.endswith(".zip"):
-        with zipfile.ZipFile(package) as source:
-            return source.read(executable)
-    with tarfile.open(fileobj=package, mode="r:gz") as source:
-        extracted = source.extractfile(executable)
-        if extracted is None:
-            raise RuntimeError(f"Release archive did not contain {executable}.")
-        return extracted.read()
+    try:
+        if archive.endswith(".zip"):
+            with zipfile.ZipFile(package) as source:
+                return source.read(executable)
+        with tarfile.open(fileobj=package, mode="r:gz") as source:
+            extracted = source.extractfile(executable)
+            if extracted is None:
+                raise RuntimeError(f"Release archive did not contain {executable}.")
+            return extracted.read()
+    except (KeyError, tarfile.TarError, zipfile.BadZipFile) as exc:
+        raise RuntimeError(f"Pinned fpt release archive was invalid or missing {executable}.") from exc
+
+
+def _checksum_path(destination: Path) -> Path:
+    return destination.with_name(destination.name + ".sha256")
+
+
+def _read_recorded_checksum(destination: Path) -> str:
+    try:
+        value = _checksum_path(destination).read_text(encoding="ascii").strip().lower()
+    except OSError:
+        return ""
+    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        return ""
+    return value
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return ""
+    return digest.hexdigest()
+
+
+def _write_temporary(directory: Path, contents: bytes) -> Path:
+    with tempfile.NamedTemporaryFile(dir=str(directory), delete=False) as output:
+        temporary = Path(output.name)
+        output.write(contents)
+    return temporary

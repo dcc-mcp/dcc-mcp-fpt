@@ -76,6 +76,9 @@ typed, progressively-loaded MCP tools built on [dcc-mcp-core](https://github.com
 
 ## Quick Start
 
+For the agent-first wheel, doctor/verify, cache, upgrade, uninstall, and
+troubleshooting contract, see [install.md](install.md).
+
 ### Install
 
 ```bash
@@ -111,6 +114,13 @@ On the first FPT command, the adapter downloads the checksum-verified pinned
 `fpt` release into its per-user cache. No system `PATH` setup is required. To
 use a studio-managed binary instead, set `DCC_MCP_FPT_CLI_PATH` to its full
 path before launch.
+
+Inspect without modifying the cache, then verify usable connectivity:
+
+```bash
+dcc-mcp-fpt doctor --json
+dcc-mcp-fpt verify --json
+```
 
 By default the adapter binds an OS-assigned instance port and enables
 the stable local gateway at `http://127.0.0.1:9765/mcp`. Use
