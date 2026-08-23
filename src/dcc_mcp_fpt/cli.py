@@ -6,6 +6,7 @@ Supports stdio, HTTP, and ASGI transports.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import signal
@@ -14,6 +15,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
+from dcc_mcp_fpt.diagnostics import diagnose
 from dcc_mcp_fpt.server import ShotGridMcpServer, start_server
 
 logger = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "mode",
         nargs="?",
         default="http",
-        choices=("http", "stdio", "asgi"),
+        choices=("http", "stdio", "asgi", "doctor", "verify"),
         help="Transport mode (default: http)",
     )
 
@@ -146,6 +148,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable debug logging.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the stable machine-readable diagnostic schema.",
+    )
 
     return parser
 
@@ -154,6 +161,14 @@ def main(argv: Optional[list] = None) -> None:
     """Main CLI entry point."""
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    if args.mode in {"doctor", "verify"}:
+        payload, exit_code = diagnose(args.mode)
+        if args.json:
+            print(json.dumps(payload, sort_keys=True))
+        else:
+            print(f"{args.mode}: {payload['status']}")
+        raise SystemExit(exit_code)
 
     if args.shotgrid_permission_level:
         os.environ["SHOTGRID_PERMISSION_LEVEL"] = args.shotgrid_permission_level
