@@ -314,8 +314,8 @@ class ShotGridClient:
     def _execute(self, *command: str, input_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         try:
             executable = self._cli_path or resolve_fpt_cli()
-        except RuntimeError as exc:
-            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from exc
+        except RuntimeError:
+            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from None
         args = [executable, *command]
         if input_data is not None:
             args.extend(("--input", json.dumps(input_data, separators=(",", ":"))))
@@ -324,10 +324,10 @@ class ShotGridClient:
             result = self._runner(
                 args, capture_output=True, text=True, timeout=self._timeout, env=self._environment(), check=False
             )
-        except OSError as exc:
-            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from exc
-        except subprocess.TimeoutExpired as exc:
-            raise ShotGridConnectionError("FPT_COMMAND_TIMEOUT") from exc
+        except OSError:
+            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from None
+        except subprocess.TimeoutExpired:
+            raise ShotGridConnectionError("FPT_COMMAND_TIMEOUT") from None
         if result.returncode or result.stderr.strip():
             raise ShotGridQueryError("FPT_COMMAND_FAILED")
         try:
