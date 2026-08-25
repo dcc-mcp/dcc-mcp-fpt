@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.9](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.8...v0.1.9) (2026-08-25)
+
+
+### Features
+
+* add FPT install verification ([261ddee](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/261ddee17156fd4569bb9e0a7778ba1ea147d3fe))
+* add secure FPT user authentication ([b831f7a](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/b831f7a28a1506c9833b1984849210ac64538a9e))
+* use pinned fpt cli transport ([ce96c8d](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/ce96c8d5e415ba99366a8909fce1c94e9e75e52b))
+
+
+### Bug Fixes
+
+* resolve project ids without lookup ([fd6d015](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/fd6d01582b789fb40650ffdd8625d32fe280dd31))
+* resolve project IDs without lookup ([c25b666](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/c25b666783376a98bfe249c1e617557ca2ac84e1))
+
+
+### Documentation
+
+* align agent workflow and branding ([beca69e](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/beca69e110aa20bc54aa11d6e289ef35128b90e0))
+* document CLI install and updates ([c781c14](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/c781c14af03b2695fd950f90bc217a164d1745c1))
+
 ## [0.1.8](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.7...v0.1.8) (2026-07-16)
 
 
