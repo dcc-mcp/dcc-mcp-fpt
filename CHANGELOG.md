@@ -12,8 +12,7 @@
 
 ### Bug Fixes
 
-* resolve project ids without lookup ([fd6d015](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/fd6d01582b789fb40650ffdd8625d32fe280dd31))
-* resolve project IDs without lookup ([c25b666](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/c25b666783376a98bfe249c1e617557ca2ac84e1))
+* resolve project IDs without lookup ([fd6d015](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/fd6d01582b789fb40650ffdd8625d32fe280dd31); [c25b666](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/c25b666783376a98bfe249c1e617557ca2ac84e1))
 
 
 ### Documentation

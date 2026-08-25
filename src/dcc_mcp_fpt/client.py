@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 from dcc_mcp_fpt.access import ProjectRef, ShotGridAccessPolicy
 from dcc_mcp_fpt.exceptions import ShotGridConnectionError, ShotGridQueryError
 from dcc_mcp_fpt.fpt_cli import resolve_fpt_cli
+from dcc_mcp_fpt.fpt_response import is_failure_response
 from dcc_mcp_fpt.models import ShotGridConnectionInfo
 from dcc_mcp_fpt.schema_cache import SchemaCache
 
@@ -314,7 +315,7 @@ class ShotGridClient:
         try:
             executable = self._cli_path or resolve_fpt_cli()
         except RuntimeError as exc:
-            raise ShotGridConnectionError(str(exc)) from exc
+            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from exc
         args = [executable, *command]
         if input_data is not None:
             args.extend(("--input", json.dumps(input_data, separators=(",", ":"))))
@@ -323,21 +324,20 @@ class ShotGridClient:
             result = self._runner(
                 args, capture_output=True, text=True, timeout=self._timeout, env=self._environment(), check=False
             )
-        except FileNotFoundError as exc:
-            raise ShotGridConnectionError(
-                f"fpt CLI was not found at '{self._cli_path}'. Set DCC_MCP_FPT_CLI_PATH to an executable path."
-            ) from exc
+        except OSError as exc:
+            raise ShotGridConnectionError("FPT_CLI_UNAVAILABLE") from exc
         except subprocess.TimeoutExpired as exc:
-            raise ShotGridConnectionError(f"fpt CLI timed out after {self._timeout:g}s") from exc
-        if result.returncode:
-            message = _error_message(result.stdout, result.stderr)
-            raise ShotGridQueryError(f"fpt {' '.join(command)} failed: {message}")
+            raise ShotGridConnectionError("FPT_COMMAND_TIMEOUT") from exc
+        if result.returncode or result.stderr.strip():
+            raise ShotGridQueryError("FPT_COMMAND_FAILED")
         try:
             payload = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
-            raise ShotGridQueryError(f"fpt {' '.join(command)} returned invalid JSON") from exc
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise ShotGridQueryError("FPT_INVALID_RESPONSE") from exc
         if not isinstance(payload, dict):
-            raise ShotGridQueryError(f"fpt {' '.join(command)} returned an unexpected JSON shape")
+            raise ShotGridQueryError("FPT_INVALID_RESPONSE")
+        if is_failure_response(payload):
+            raise ShotGridQueryError("FPT_COMMAND_FAILED")
         return payload
 
     def _environment(self) -> Dict[str, str]:
@@ -489,19 +489,6 @@ def _schema_name(value: Any) -> Optional[str]:
 
 def _has_project_filter(filters: List[Any]) -> bool:
     return any(isinstance(item, (list, tuple)) and item and item[0] == "project" for item in filters or [])
-
-
-def _error_message(stdout: str, stderr: str) -> str:
-    for value in (stdout, stderr):
-        if value.strip():
-            try:
-                payload = json.loads(value)
-                if isinstance(payload, dict):
-                    return str(payload.get("message") or payload.get("error") or value.strip())
-            except json.JSONDecodeError:
-                pass
-            return value.strip()
-    return "unknown error"
 
 
 def _env_int(name: str) -> Optional[int]:
