@@ -82,14 +82,34 @@ def test_delete_requires_fpt_confirmation(shotgrid_client, fpt_runner):
     assert "--yes" in fpt_runner.calls[-1]
 
 
-def test_cli_errors_are_adapter_errors():
+@pytest.mark.parametrize(
+    ("returncode", "stdout", "stderr", "expected_code"),
+    [
+        (1, '{"error":"token=secret https://private.example/api C:/private/file"}', "", "FPT_COMMAND_FAILED"),
+        (1, "", "token=secret https://private.example/api C:/private/file", "FPT_COMMAND_FAILED"),
+        (0, '{"ok":true}', "token=secret https://private.example/api C:/private/file", "FPT_COMMAND_FAILED"),
+        (0, '{"error":"token=secret https://private.example/api C:/private/file"}', "", "FPT_COMMAND_FAILED"),
+        (0, '{"errors":["token=secret"]}', "", "FPT_COMMAND_FAILED"),
+        (0, '{"ok":false,"message":"token=secret"}', "", "FPT_COMMAND_FAILED"),
+        (0, '{"status":"failed","message":"token=secret"}', "", "FPT_COMMAND_FAILED"),
+        (0, '{"success":false,"message":"token=secret"}', "", "FPT_COMMAND_FAILED"),
+        (0, "not-json token=secret https://private.example/api C:/private/file", "", "FPT_INVALID_RESPONSE"),
+        (0, '["token=secret"]', "", "FPT_INVALID_RESPONSE"),
+    ],
+)
+def test_cli_failures_are_stable_and_do_not_echo_process_output(returncode, stdout, stderr, expected_code):
     def runner(*args, **kwargs):
-        return subprocess.CompletedProcess([], 1, '{"error":"denied"}', "")
+        return subprocess.CompletedProcess([], returncode, stdout, stderr)
 
     client = ShotGridClient("https://test.shotgrid.autodesk.com", "script", "key", cli_path="fpt", runner=runner)
 
-    with pytest.raises(ShotGridQueryError, match="denied"):
+    with pytest.raises(ShotGridQueryError) as error:
         client.connect()
+
+    assert str(error.value) == expected_code
+    assert "secret" not in str(error.value)
+    assert "private.example" not in str(error.value)
+    assert "C:/private" not in str(error.value)
 
 
 def test_missing_cli_is_reported():
@@ -100,5 +120,40 @@ def test_missing_cli_is_reported():
         "https://test.shotgrid.autodesk.com", "script", "key", cli_path="missing-fpt", runner=runner
     )
 
-    with pytest.raises(ShotGridConnectionError, match="DCC_MCP_FPT_CLI_PATH"):
+    with pytest.raises(ShotGridConnectionError, match="^FPT_CLI_UNAVAILABLE$"):
         client.connect()
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_code"),
+    [
+        (OSError("C:/private/fpt.exe token=secret"), "FPT_CLI_UNAVAILABLE"),
+        (subprocess.TimeoutExpired(["C:/private/fpt.exe"], 30, stderr="token=secret"), "FPT_COMMAND_TIMEOUT"),
+    ],
+)
+def test_process_exceptions_do_not_expose_paths_or_credentials(failure, expected_code):
+    def runner(*args, **kwargs):
+        raise failure
+
+    client = ShotGridClient("https://test.shotgrid.autodesk.com", "script", "key", cli_path="fpt", runner=runner)
+
+    with pytest.raises(ShotGridConnectionError) as error:
+        client.connect()
+
+    assert str(error.value) == expected_code
+    assert "private" not in str(error.value)
+    assert "secret" not in str(error.value)
+
+
+def test_bootstrap_failure_does_not_echo_resolver_details(monkeypatch):
+    def fail_resolution():
+        raise RuntimeError("C:/private/cache token=secret https://private.example")
+
+    monkeypatch.setattr("dcc_mcp_fpt.client.resolve_fpt_cli", fail_resolution)
+    client = ShotGridClient("https://test.shotgrid.autodesk.com", "script", "key")
+
+    with pytest.raises(ShotGridConnectionError, match="^FPT_CLI_UNAVAILABLE$") as error:
+        client.connect()
+
+    assert "private" not in str(error.value)
+    assert "secret" not in str(error.value)

@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from dcc_mcp_fpt import __version__
 from dcc_mcp_fpt.fpt_cli import FPT_VERSION, inspect_fpt_cli, resolve_fpt_cli
+from dcc_mcp_fpt.fpt_response import is_failure_response
 
 SCHEMA_VERSION = 1
 EXIT_OK = 0
@@ -284,9 +285,9 @@ def _detect_fpt_version(executable: str) -> Tuple[Optional[str], Optional[str]]:
         )
     except (OSError, subprocess.TimeoutExpired):
         return None, "fpt_version_command_failed"
-    if completed.returncode:
+    if completed.returncode or completed.stderr.strip():
         return None, "fpt_version_command_failed"
-    match = re.search(r"\d+\.\d+\.\d+", completed.stdout or completed.stderr)
+    match = re.search(r"\d+\.\d+\.\d+", completed.stdout)
     return (match.group(0), None) if match else (None, "fpt_version_unparseable")
 
 
@@ -302,13 +303,13 @@ def _check_connectivity(executable: str) -> bool:
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
-    if completed.returncode:
+    if completed.returncode or completed.stderr.strip():
         return False
     try:
         response = json.loads(completed.stdout)
     except (TypeError, json.JSONDecodeError):
         return False
-    return isinstance(response, dict) and response.get("success") is not False
+    return isinstance(response, dict) and response.get("success") is True and not is_failure_response(response)
 
 
 def _fpt_environment() -> Dict[str, str]:

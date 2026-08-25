@@ -17,6 +17,12 @@ from typing import Any, Dict, Tuple
 
 FPT_VERSION = "0.2.25"
 _RELEASE_URL = "https://github.com/dcc-mcp/fpt-cli/releases/download/v{version}"
+_ASSET_SHA256 = {
+    "fpt-v0.2.25-aarch64-apple-darwin.tar.gz": "159be8939aa6fbd83ca218db2a20bacbed695fc1186aa27710c2c361a57c69b8",
+    "fpt-v0.2.25-x86_64-apple-darwin.tar.gz": "ba15521fb9027600771ef2bb68c26d66ee62157560ecfb7464ba924caedb4544",
+    "fpt-v0.2.25-x86_64-pc-windows-msvc.zip": "cded86dc1bf754944b5c8bf7825004a1af37bda5feae149085f6085073606964",
+    "fpt-v0.2.25-x86_64-unknown-linux-gnu.tar.gz": "fe5e197a3be1ce0e98c14665128a19d6b8f4fb7462a38483a2f10c7d3cc349f0",
+}
 
 
 def resolve_fpt_cli() -> str:
@@ -88,13 +94,11 @@ def _cache_dir() -> Path:
 
 
 def _install(archive: str, executable: str, destination: Path) -> None:
+    expected = _ASSET_SHA256.get(archive)
+    if expected is None:
+        raise RuntimeError("The requested fpt release asset is not package-trusted.")
     base_url = _RELEASE_URL.format(version=FPT_VERSION)
     payload = _download(f"{base_url}/{archive}")
-    try:
-        checksum_manifest = _download(f"{base_url}/fpt-checksums.txt").decode("utf-8")
-    except UnicodeError as exc:
-        raise RuntimeError("The pinned fpt checksum manifest was not valid UTF-8.") from exc
-    expected = _checksum(checksum_manifest, archive)
     if hashlib.sha256(payload).hexdigest() != expected:
         raise RuntimeError(f"Checksum verification failed for {archive}.")
 
@@ -117,14 +121,6 @@ def _install(archive: str, executable: str, destination: Path) -> None:
 def _download(url: str) -> bytes:
     with urllib.request.urlopen(url, timeout=30) as response:
         return response.read()
-
-
-def _checksum(contents: str, archive: str) -> str:
-    for line in contents.splitlines():
-        parts = line.split()
-        if len(parts) == 2 and parts[1].lstrip("*") == archive:
-            return parts[0]
-    raise RuntimeError(f"Release checksum for {archive} was not found.")
 
 
 def _executable_bytes(archive: str, executable: str, payload: bytes) -> bytes:

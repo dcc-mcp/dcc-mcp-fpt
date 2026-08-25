@@ -13,6 +13,8 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+import pytest
+
 from dcc_mcp_fpt import fpt_cli
 from dcc_mcp_fpt.diagnostics import diagnose
 
@@ -194,11 +196,58 @@ def test_verify_maps_auth_failure_to_exit_40_without_returning_process_output(
     assert "must-never-be-printed" not in json.dumps(payload)
 
 
+def test_verify_rejects_version_stderr_without_exposing_it(monkeypatch) -> None:
+    monkeypatch.setenv("DCC_MCP_FPT_CLI_PATH", sys.executable)
+    monkeypatch.setenv("SHOTGRID_URL", "https://example.shotgrid.autodesk.com")
+    monkeypatch.setenv("SHOTGRID_FPT_PROFILE", "example-profile")
+
+    def run_fpt(command, **kwargs):
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(command, 0, "fpt 0.2.25\n", "token=must-never-be-printed")
+        return subprocess.CompletedProcess(command, 0, '{"success":true}\n', "")
+
+    monkeypatch.setattr("dcc_mcp_fpt.diagnostics.subprocess.run", run_fpt)
+
+    payload, exit_code = diagnose("verify")
+
+    assert exit_code == 10
+    assert payload["failure_reason"] == "fpt_version_command_failed"
+    assert "must-never-be-printed" not in json.dumps(payload)
+
+
+@pytest.mark.parametrize(
+    ("stdout", "stderr"),
+    [
+        ('{"error":"token=must-never-be-printed"}\n', ""),
+        ('{"success":true}\n', "endpoint=https://private.example token=must-never-be-printed"),
+    ],
+)
+def test_verify_rejects_error_envelopes_and_stderr_without_exposing_them(monkeypatch, stdout, stderr) -> None:
+    monkeypatch.setenv("DCC_MCP_FPT_CLI_PATH", sys.executable)
+    monkeypatch.setenv("SHOTGRID_URL", "https://example.shotgrid.autodesk.com")
+    monkeypatch.setenv("SHOTGRID_FPT_PROFILE", "example-profile")
+
+    def run_fpt(command, **kwargs):
+        if command[-1] == "--version":
+            return subprocess.CompletedProcess(command, 0, "fpt 0.2.25\n", "")
+        return subprocess.CompletedProcess(command, 0, stdout, stderr)
+
+    monkeypatch.setattr("dcc_mcp_fpt.diagnostics.subprocess.run", run_fpt)
+
+    payload, exit_code = diagnose("verify")
+
+    assert exit_code == 40
+    assert payload["failure_reason"] == "fpt_auth_test_failed"
+    serialized = json.dumps(payload)
+    assert "must-never-be-printed" not in serialized
+    assert "private.example" not in serialized
+
+
 def test_verify_safely_provisions_the_immutable_pinned_cache(tmp_path: Path, monkeypatch) -> None:
     archive, executable = _platform_asset()
     cache_root = tmp_path / "cache"
     payload = _archive_payload(archive, executable, b"verified executable")
-    checksums = f"{hashlib.sha256(payload).hexdigest()}  {archive}\n".encode()
+    monkeypatch.setitem(fpt_cli._ASSET_SHA256, archive, hashlib.sha256(payload).hexdigest())
     monkeypatch.delenv("DCC_MCP_FPT_CLI_PATH", raising=False)
     monkeypatch.setenv("LOCALAPPDATA", str(cache_root))
     monkeypatch.setenv("XDG_CACHE_HOME", str(cache_root))
@@ -208,7 +257,7 @@ def test_verify_safely_provisions_the_immutable_pinned_cache(tmp_path: Path, mon
     monkeypatch.setattr(
         fpt_cli,
         "_download",
-        lambda url: checksums if url.endswith("checksums.txt") else payload,
+        lambda _url: payload,
     )
 
     def run_fpt(command, **kwargs):
