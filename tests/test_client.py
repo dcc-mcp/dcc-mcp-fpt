@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import subprocess
+import traceback
 
 import pytest
 
+from dcc_mcp_fpt import cli as cli_module
 from dcc_mcp_fpt.client import ShotGridClient
 from dcc_mcp_fpt.exceptions import ShotGridConnectionError, ShotGridQueryError
 
@@ -127,8 +129,15 @@ def test_missing_cli_is_reported():
 @pytest.mark.parametrize(
     ("failure", "expected_code"),
     [
-        (OSError("C:/private/fpt.exe token=secret"), "FPT_CLI_UNAVAILABLE"),
-        (subprocess.TimeoutExpired(["C:/private/fpt.exe"], 30, stderr="token=secret"), "FPT_COMMAND_TIMEOUT"),
+        (OSError("stderr=stderr-secret C:/private/fpt.exe token=secret"), "FPT_CLI_UNAVAILABLE"),
+        (
+            subprocess.TimeoutExpired(
+                ["C:/private/fpt.exe", "--input", '{"token":"argv-secret"}'],
+                30,
+                stderr="stderr-secret",
+            ),
+            "FPT_COMMAND_TIMEOUT",
+        ),
     ],
 )
 def test_process_exceptions_do_not_expose_paths_or_credentials(failure, expected_code):
@@ -141,8 +150,49 @@ def test_process_exceptions_do_not_expose_paths_or_credentials(failure, expected
         client.connect()
 
     assert str(error.value) == expected_code
-    assert "private" not in str(error.value)
-    assert "secret" not in str(error.value)
+    rendered = "".join(
+        traceback.format_exception(type(error.value), error.value, error.value.__traceback__, chain=True)
+    )
+    assert "private" not in rendered
+    assert "secret" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_code"),
+    [
+        (RuntimeError("C:/private/cache token=resolver-secret"), "FPT_CLI_UNAVAILABLE"),
+        (OSError("stderr=stderr-secret C:/private/fpt.exe"), "FPT_CLI_UNAVAILABLE"),
+        (
+            subprocess.TimeoutExpired(
+                ["C:/private/fpt.exe", "--input", '{"token":"argv-secret"}'],
+                30,
+                stderr="stderr-secret",
+            ),
+            "FPT_COMMAND_TIMEOUT",
+        ),
+    ],
+)
+def test_verbose_cli_logging_does_not_render_external_failure_chain(monkeypatch, caplog, failure, expected_code):
+    def fail_external_call(*args, **kwargs):
+        raise failure
+
+    if isinstance(failure, RuntimeError):
+        client = ShotGridClient("https://test.shotgrid.autodesk.com", "script", "key")
+        monkeypatch.setattr("dcc_mcp_fpt.client.resolve_fpt_cli", fail_external_call)
+    else:
+        client = ShotGridClient(
+            "https://test.shotgrid.autodesk.com", "script", "key", cli_path="fpt", runner=fail_external_call
+        )
+    monkeypatch.setattr(cli_module, "setup_logging", lambda verbose: None)
+    monkeypatch.setattr(cli_module, "_run_http", lambda args: client.connect())
+
+    with caplog.at_level("DEBUG", logger="dcc_mcp_fpt.cli"), pytest.raises(SystemExit) as exit_info:
+        cli_module.main(["http", "--verbose", "--no-gateway"])
+
+    assert exit_info.value.code == 1
+    assert expected_code in caplog.text
+    assert "private" not in caplog.text
+    assert "secret" not in caplog.text
 
 
 def test_bootstrap_failure_does_not_echo_resolver_details(monkeypatch):
@@ -155,5 +205,8 @@ def test_bootstrap_failure_does_not_echo_resolver_details(monkeypatch):
     with pytest.raises(ShotGridConnectionError, match="^FPT_CLI_UNAVAILABLE$") as error:
         client.connect()
 
-    assert "private" not in str(error.value)
-    assert "secret" not in str(error.value)
+    rendered = "".join(
+        traceback.format_exception(type(error.value), error.value, error.value.__traceback__, chain=True)
+    )
+    assert "private" not in rendered
+    assert "secret" not in rendered
