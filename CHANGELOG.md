@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.9...v0.1.10) (2026-10-12)
+
+
+### Documentation
+
+* **readme:** add the generated DCC-MCP host matrix pointer ([#33](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/33)) ([0889627](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/0889627502d46a04765540f5a9189c95faf3013a))
+* refresh the generated DCC-MCP host matrix pointer ([8aa83c3](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/8aa83c391a668694dbcad2965c086de500a1637d))
+
 ## [0.1.9](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.8...v0.1.9) (2026-08-25)
 
 
