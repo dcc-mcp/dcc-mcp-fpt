@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.10...v0.1.11) (2026-10-17)
+
+
+### Documentation
+
+* refresh the generated DCC-MCP host matrix pointer ([#36](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/36)) ([1238c0b](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/1238c0b5e9a56410b0ae0bff4926251bddf66e4e))
+
 ## [0.1.10](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.9...v0.1.10) (2026-10-12)
 
 
