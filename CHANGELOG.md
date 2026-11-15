@@ -13,7 +13,7 @@
 
 * refresh the generated DCC-MCP host matrix pointer ([6afaa85](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/6afaa85a7b18452df4123c5f531704b881d6ed34))
 * refresh the generated DCC-MCP host matrix pointer ([82db479](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/82db4797005ff87ace92a3c52ac62db6a70d9949))
-* refresh the generated DCC-MCP host matrix pointer ([#36](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/36)) ([1238c0b](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/1238c0b5e9a56410b0ae0bff4926251bddf66e4e))
+* refresh the generated DCC-MCP host matrix pointer ([#36](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/36)) ([8aa83c3](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/8aa83c391a668694dbcad2965c086de500a1637d))
 
 ## [0.1.10](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.9...v0.1.10) (2026-10-12)
 
