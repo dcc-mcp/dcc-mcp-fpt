@@ -82,3 +82,8 @@ docker-run:
 # Clean build and test artifacts.
 clean:
     python -c "import pathlib, shutil; [shutil.rmtree(p, ignore_errors=True) for p in ('dist', 'build', '.pytest_cache', '.ruff_cache', 'htmlcov')]; [shutil.rmtree(p, ignore_errors=True) for p in pathlib.Path('.').glob('*.egg-info')]; [p.unlink(missing_ok=True) for p in pathlib.Path('.').glob('.coverage*')]"
+
+
+# Verify the pinned VX and just toolchain.
+toolchain-ci:
+    vx just@1.58 --version
