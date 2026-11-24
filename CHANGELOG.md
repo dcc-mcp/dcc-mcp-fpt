@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.11](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.10...v0.1.11) (2026-11-24)
+
+
+### Bug Fixes
+
+* **ci:** keep legacy Python jobs on supported Ubuntu ([ceee726](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/ceee726516c0dc119e8d93dd6cff028ac5ca0cd5))
+* **ci:** keep legacy Python jobs on supported Ubuntu ([23d83ed](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/23d83edba31047ed90960f6323678c03c9dca139))
+
+
+### Documentation
+
+* refresh the generated DCC-MCP host matrix pointer ([6afaa85](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/6afaa85a7b18452df4123c5f531704b881d6ed34))
+* refresh the generated DCC-MCP host matrix pointer ([82db479](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/82db4797005ff87ace92a3c52ac62db6a70d9949))
+* refresh the generated DCC-MCP host matrix pointer ([#36](https://github.com/dcc-mcp/dcc-mcp-fpt/issues/36)) ([1238c0b](https://github.com/dcc-mcp/dcc-mcp-fpt/commit/1238c0b5e9a56410b0ae0bff4926251bddf66e4e))
+
 ## [0.1.10](https://github.com/dcc-mcp/dcc-mcp-fpt/compare/v0.1.9...v0.1.10) (2026-10-12)
 
 
